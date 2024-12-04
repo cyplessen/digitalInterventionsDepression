@@ -20,7 +20,7 @@ This repository contains the data, code, and resources used for the publication 
 - **`digDep_3_manuscript.Rmd`**  
   This R Markdown file generates the figures and tables used in the manuscript. It includes code for creating visualizations that illustrate the results of the multiverse analysis.
 
-- **`digitalInterventionsDepression.Rproj`**  
+- **`multiverse-meta-analysis-depression.Rproj`**  
   The RStudio project file for this repository. Open this file in RStudio to access the project environment.
 
 - **`.gitignore`**  
