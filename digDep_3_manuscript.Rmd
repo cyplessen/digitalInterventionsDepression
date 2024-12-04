@@ -1,0 +1,2295 @@
+---
+title: "**Digital mental health interventions for depression: A multiverse meta-analysis**
+  ^[Preliminary draft. Please do not cite or circulate without permission from the
+  author.]\n"
+author:
+- name: Constantin Yves Plessen, MSc
+  institute:
+  - vu
+  - charite
+- name: Olga Panagiotopoulou
+  institute: vu
+- name: Eirini Karyotaki, PhD
+  institute: vu
+- name: Pim Cuijpers, PhD
+  institute: vu
+output:
+  word_document:
+    reference_docx: wordTemplates/APA_Template_7th_ed.docx
+    pandoc_args:
+    - "--lua-filter=scholarly-metadata.lua"
+    - "--lua-filter=author-info-blocks.lua"
+  html_document:
+    df_print: paged
+bibliography: references.bib
+institute:
+- vu: "Department of Clinical, Neuro-, and Developmental Psychology, Vrije Universiteit
+    Amsterdam, Amsterdam, The Netherlands"
+- charite: Charité University Medicine Berlin, Berlin, Germany
+editor_options:
+  markdown: null
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = F)
+options(scipen = 999)
+library(officedown)
+library(readxl)
+library(tidyverse)
+library(metafor)
+library(metaviz)
+library(puniform)
+library(grid)
+library(nord)
+library(officer)        # exporting word files
+library(flextable)      # easily create tables
+library(gtsummary)
+# helper functions to change between a3 and a4 page size
+open_a3 <- block_section(prop_section(
+  type = "continuous"))
+
+close_a3 <- block_section(prop_section(
+  page_size = page_size(width = 16.5354, 
+                        height = 11.69291,
+                        orient = "landscape"),
+  type = "continuous"))
+
+open_a4 <- block_section(prop_section(
+  type = "continuous"))
+
+
+close_a4 <- block_section(prop_section(
+  page_size = page_size(orient = "landscape"),
+  type = "continuous"))
+
+options(scipen = 1, digits = 2)
+
+# load data from result files
+load(file = "data/tidy/digDep_results.rda") 
+
+specifications <- data_specifications
+
+set_flextable_defaults(
+  font.family = "Times New Roman", font.size = 11, font.color = "#111111")
+qflextable(head(iris))
+qflextable(head(mtcars))
+```
+
+\newpage
+
+# Abstract 
+
+```{r echo = F}
+# Basic summary of included rcts, es, and meta-analyses
+k_studies <- data_multiverse %>% distinct(study) %>% nrow()
+k_es <-  data_multiverse %>% nrow()
+k_ma <- nrow(specifications)
+
+# VOE values
+tenth_percentile <- quantile(specifications$mean, 0.1)
+ninetieth_percentile <- quantile(specifications$mean, 0.9)
+
+ma_below_tenth <- specifications %>% 
+  filter(mean < tenth_percentile) %>% nrow
+
+ma_below_tenth_sig <- specifications %>% 
+  filter(mean < tenth_percentile & p < .05) %>% nrow
+
+ma_below_tenth_sig_percent <- round(ma_below_tenth_sig/ma_below_tenth, 2) * 100
+
+ma_below_zero_sig <- specifications %>% 
+  filter(mean < 0 & p < .05) %>% nrow
+
+ma_below_zero_sig_percent <- round(ma_below_zero_sig/ma_below_tenth, 2) * 100
+
+
+ma_above_ninetieth <- specifications %>% 
+  filter(mean > ninetieth_percentile) %>% nrow
+
+ma_above_ninetieth_sig <- specifications %>% 
+  filter(mean > ninetieth_percentile & p < .05) %>% nrow
+
+ma_above_ninetieth_sig_percent <- round(ma_above_ninetieth_sig/ma_above_ninetieth, 2) * 100
+
+ma_sig <- specifications %>% 
+  filter(mean > 0 & p < .05) %>% nrow
+
+
+ma_sig_percent <- ma_sig/k_ma * 100
+
+ma_not_sig <- specifications %>% 
+  filter(mean > 0 & p >= .05) %>% nrow
+
+ma_not_sig_percent <- ma_not_sig/k_ma * 100
+
+ma_p_not_sig <- specifications %>% 
+  filter(p >= .05) %>% nrow
+
+ma_p_not_sig_percent <- ma_p_not_sig/k_ma * 100
+
+ma_ctr_sig <- specifications %>% 
+  filter(mean < 0 & p <= .05) %>% nrow
+
+
+tenth_percentile_k2 <- quantile(specifications_k2$mean, 0.1)
+ninetieth_percentile_k2 <- quantile(specifications_k2$mean, 0.9)
+
+tenth_percentile_k5 <- quantile(specifications_k5$mean, 0.1)
+ninetieth_percentile_k5 <- quantile(specifications_k5$mean, 0.9)
+
+tenth_percentile_k25 <- quantile(specifications_k25$mean, 0.1)
+ninetieth_percentile_k25 <- quantile(specifications_k25$mean, 0.9)
+
+tenth_percentile_k50 <- quantile(specifications_k50$mean, 0.1)
+ninetieth_percentile_k50 <- quantile(specifications_k50$mean, 0.9)
+```
+
+*Aim*: To explore the impact of analytical decisions on the results of meta-analyses on the effectiveness of digital interventions for depression. 
+
+*Methods*: We performed a systematic literature search (using Embase, PsycINFO and PubMed up until February 2023) of randomized controlled trials (RCTs) on digital interventions for depression.
+Within a mulitiverse analysis, we conducted over 2,000 meta-analyses according to every possible combination of various analytical decisions (e.g., publications, characteristics of the intervention and control groups, outcome, study design). We assessed the overall robustness of the produced meta-analyses by identifying highly influential decisions, inspecting vibration of effects (VoE), and investigating the existence of a Janus effect—a change of the effect size direction between the 10th and 90th percentiles in the distribution of effect sizes. 
+
+*Results*: After including `r k_studies` RCTs with `r k_es` effect sizes, we performed `r k_ma` meta-analyses. The mean effect size was Hedges *g* = `r mean(specifications$mean)` and was positive at both the 10th percentile (*g* = `r tenth_percentile`) and at the 90th percentile (*g* = `r ninetieth_percentile`). Overall, `r ma_sig` meta-analyses showed a statistically significant difference in favor of digital interventions, while `r ma_not_sig` failed to demonstrate the efficacy of digital interventions (including `r ma_ctr_sig` meta-analyses that showed a statistically significant difference in favor of the control). These results suggest the overall robustness of digital interventions, with larger effect sizes observed in meta-analyses focused on guided interventions, mobile-based interventions, comparisons with wait-list control groups, and on populations diagnosed with major depressive disorder and mood disorder. Lower effect size estimates were found when methods were used attempting to correct for publication bias.
+
+*Conclusions*: The analytical decisions made in performing pairwise meta-analyses can result in substantial VoE for the magnitude of summary effect sizes, ranging from small to medium effect sizes.
+
+\newpage
+
+# Introduction
+
+[Google Drive](https://docs.google.com/document/d/1ia2-ZQJsYD_PU2Icm2zxvE1vcw3nMKc4TzJAavwYAGw/edit)
+
+Depression is often associated with important personal challenges, significant productivity loss and economic costs, and in certain cases, reduced life expectancy (Evans-Lacko and Knapp, 2016; Fried and Nesse, 2014; Jain et al., 2022; Laursen et al., 2016; Steward et al., 2003). Despite the joint efforts of clinicians and researchers to alleviate the burden of depression, it remains highly prevalent among the global population with severe consequences both for the individual and the society as a whole (Johnston et al., 2019; Santomauro et al., 2021; World Health Organization [WHO], 2023). International guidelines promote evidence-based psychotherapy and/or pharmacotherapy as first-line treatments, depending on many factors such as the individual’s symptom severity (American Psychiatric Association [APA], 2019). However, even though effective, access to traditional psychotherapy is limited for multiple reasons including increased costs, shortage of personnel and self-stigmatization (Ebert et al., 2017; Carbonell et al., 2020; Schaffler, 2022; Mohr et al., 2006). As a consequence, most people do not receive adequate or any form of treatment at all (Moitra et al., 2022).
+Over the past years, technology has transformed how we perceive mental health care by allowing us to provide evidence-based treatments, such as cognitive behavioural therapy, in a cost-effective manner. Digital interventions, namely guided and self-guided online programs or smartphone apps based on different psychological treatments, offer many innovative and practical solutions. Remote and immediate access to treatment is one of the many advantages of digital interventions (Cuijpers & Riper, 2014). In addition, digital interventions ensure anonymity, and flexibility in time management and are highly scalable and easily adapted, making them accessible to a broad and diverse audience (Patel et al., 2020; Rodriguez-Villa et al., 2020).
+Due to the widespread implementation of internet-based interventions for depression, numerous randomized controlled trials on individuals with depression have been conducted all over the world, and thus, many meta-analyses have examined the overall efficacy of such interventions in reducing the symptoms of depression. Evidence suggests that digital interventions can be effective in facilitating the needs of people facing depression by significantly reducing clinical symptoms by the end of the implementation period (Josephine et al., 2017; Karyotaki et al., 2021; Lindegaard et al., 2020; Roman et al., 2020; Sierra et al., 2018; Yang et al., 2018) while sometimes this decline has shown to persist in the long-term (Köhnen et al., 2021; Reins et al., 2021; Sztein et al., 2017). Additionally, in some cases outcomes equivalent to face-to-face psychotherapy have been observed (Ahern et al., 2018; Cuijpers et al., 2017; Higinbotham et al., 2020; Moshe et al., 2021) while research indicates that individuals with moderate to severe symptoms of depression can benefit more from digital interventions (Chan et al., 2021; Furukawa et al, 2021; Karyotaki et al., 2021; Serrano-Ripoll et al., 2022).
+
+However, findings are not consistent across studies. Effect sizes presented in the literature differ widely and vary from small to large (Hedges *g* 0.22 to 1.01) depending on many factors such as the comparator and the type of intervention under investigation (Chan et al.,2021; Cuijpers et al., 2019; Firth et al., 2017; Han et al., 2022; Josephine et al., 2017; Karyotaki et al., 2017; Köhnen et al., 2021; Pang et al., 2021; Serrano-Ripoll et al., 2022; Sierra et al., 2018; Xiong et al., 2023). As a result, questions about the applicability and validity of the available information arise. For instance, while there is a scientific consensus that guided interventions are superior compared to self-guided in alleviating symptoms of depression (Mamukashvili-Delau et al., 2022; Wells et al., 2018, Wright et al., 2019), some meta-analyses have depicted comparable effects across different types of guidance or absence thereof (Ahern et al., 2018; Sztein et al., 2017). Other meta-analyses have replicated the results about the efficacy of guided interventions across different target populations and interventions but failed to yield statistically significant results for the effectiveness of self-guided interventions when compared to treatment as usual (Cuijpers et al., 2019; Pang et al., 2021).
+Not surprisingly, the diverging results could be attributed to different meta-analytical decisions. When conducting a meta-analysis, researchers must make several critical choices, that direct their course of action. These decisions, also known as researchers’ degree of freedom, are often directed by theory and can be summarized as the selection of primary studies (eligibility assessment based on prespecified criteria about study characteristics) and the use of specific models of data analysis. As a result, even though conventional meta-analyses can provide highly suggestive evidence, they aim to address a particular research question instead of exploring all possible combinations across available data (Simmons et al., 2011; Voracek et al., 2019; Simonsohn et al., 2020).
+
+Granted that a considerable number of meta-analyses exploring the effectiveness of digital interventions for depression have been published in recent years, there is a need to clarify the evidence and assess the potential strengths and weaknesses of the existing literature in order to facilitate clinical advancement and support the continued growth of the field. The study’s objective is to perform a multiverse meta-analysis using robust and comprehensive methodological approaches, that consider all plausible combinations of available data, to uncover the extent of the effectiveness of digital interventions (Steegen et al., 2016; Simonsohn et al., 2020). This approach enables us: 1) to statistically incorporate all previously conducted meta-analyses and additionally explore all possible and justifiable meta-analyses that can be deducted from the present data but have not been conducted yet, 2) examine the impact of different methodological paths on treatment outcome, 3) identify gaps in the literature, 4) examine the causes behind diverging results and the impact of several factors such as control types, psychotherapeutic approaches, target groups and delivery modalities, 5) and visualise the results. 
+
+Our primary research question was: Do the majority of meta-analyses provide evidence supporting the efficacy of digital interventions for reducing depressive symptoms?
+
+Additionally, we sought to explore whether the results derived from these meta-analyses vary based on:
+a. Different demographic groups and populations; 
+b. Various aspects of the interventions, including the level of guidance provided, the type of technology used, and the underlying psychotherapeutic framework; 
+c. The control conditions employed in the studies; 
+d. The outcomes measured; 
+e. Various study design factors, such as the risk of bias, the timing of the measurements, and the methodologies used; 
+f. And to explore the so-called Vibrations of effects (VoE) in the multiverse of possible meta-analyses on the effectiveness of digital interventions.
+
+
+
+# Methods
+
+Word
+[Google Drive](https://docs.google.com/document/d/1FyVEcxQqAS67imEPcVezKqnnlFvBPst0/edit)
+
+Google Doc
+[Google Drive](https://docs.google.com/document/d/1JQfrzL-QsNk6kbgOuXgq78oiohWcnharAfjywDGRvmA/edit)
+
+
+
+## Eligibility 
+
+Randomized controlled trials were deemed eligible if they examined the effectiveness of digital interventions compared to an inactive control for the treatment of depression. The following inclusion criteria were assessed for each primary study: a) Participants of all ages had to be recruited based on elevated depression symptoms as indicated by a validated self-reported questionnaire or a clinical diagnosis of any depressive disorder according to a structured diagnostic interview at the time of enrollment, b) Digital guided or self-guided interventions founded on therapeutic protocols focusing on the treatment of depression (cognitive behavioural activation, behavioural activation, problem-solving therapy, etc.). These interventions had to be delivered through mobile apps or internet-based platforms and had to be accessible remotely through the internet, c) Comparison groups had to be purely inactive or providing minimal psychoeducation (care-as-usual, waiting list, no treatment, attention control), d) Sufficient data to calculate effect sizes for depression levels as a primary outcome had to be reported. Language restrictions were not applied, and studies were included regardless of whether participants had physical or mental comorbidities. No limitations with regard to the number of sessions or overall duration of the treatment period were incorporated.
+
+Studies were excluded if: a) digital interventions were delivered as an adjunctive to face-to-face psychotherapy or in a blended format, b) the treatment was part of a dismantling study, a stepped-care program or maintenance trials aimed at the prevention of relapse in previously depressed patients, c) the paper was a dissertation or presented a secondary analysis of previously published papers.
+
+## Search strategy and Selection process 
+Relevant records were identified from an existing repository including all available studies on the effectiveness of digital interventions in reducing the symptoms of depression and/or anxiety (randomized controlled trials, observational studies conducted in primary care, systematic reviews and meta-analyses). The repository was established on February 25th, 2022 by conducting an extensive literature search on Embase, PsycINFO and PubMed, and it is updated yearly (Last update: February 6th, 2023). The extensive search was filtered for records published after 2000 and only peer-reviewed papers were examined for inclusion. All records were screened by title and abstract, and if judged as possibly eligible they were examined on a full-text basis by three pairs of independent researchers. Disagreement was solved through discussion.  The full search strings are presented in Appendix A. Additional records were added to the repository from the meta-analytic database of psychological treatments for depression (Cuijpers et al., 2008) and through known references.  
+
+
+
+## Data Collection Process
+Data for each eligible study were extracted manually by pairs of independent reviewers. Discrepancies were solved through discussion and a senior researcher was consulted if necessary. From each study, we extracted data on the characteristics of the included studies (author details, year of publication, sample size in each group), demographic characteristics of participants (age, gender), and depression outcomes. We extracted all available depression outcomes (self-reported or clinician-rated) reported in each paper at all time points (baseline, post-treatment, follow-ups). Intention to treat data were prioritized over per protocol or complete case analysis data. 
+
+We investigated a range of analytical decisions that meta-analysts might use when examining the effectiveness of digital interventions based on specific criteria for study inclusion. These criteria, so called Which factors (determining which data to meta-analyze), were shaped by the PICOS framework, which considers population, intervention, control comparison, outcomes, and study design and include the following eight factors:We extracted data on eight “Which factors”, namely the variables that were included as our main units of analysis. The following factors were used to investigate all possible combinations in the multiverse meta-analysis:
+
+**Population:** We classified participants into five groups based on important demographic characteristics: adults (over the age of 18), young people (participants in studies with children, adolescents and young adults), women with perinatal depression, people with physical comorbidities, and lastly a more inclusive group with other. The latter included people with particular characteristics that do not fit in the general population (e.g., asylum seekers or migrants, veterans, older adults, employees in specific professions).
+Intervention-Method of delivery: Interventions were rated as internet-based or mobile apps. When an intervention was provided through both means, it was designated as internet-based since it was expected that the intervention was designed to be delivered primarily through a website platform. 
+
+**Intervention-Treatment modality:** Interventions were divided into two categories based on the origin of their main components. Those closely related to Cognitive Behavioural Therapy (including pure CBT, behavioural activation, third-wave therapies, and mindfulness-based interventions) were classified as CBT-based and those consisting of other types of therapy (such as interpersonal psychotherapy, psychodynamic approach, problem-solving therapy, life review therapy, etc.) as non-CBT based.
+
+**Intervention-Levels of support:** To obtain a more comprehensive understanding of how different levels of guidance impact the treatment outcome, we categorized studies based on four distinct levels of support, as inspired by Furukawa et al., 2021. The first category refers to studies with minimal to no support, where participants do not receive any form of support throughout the treatment period or are offered minimal technical assistance for practical matters on the utilization of digital programs. In the next level defined as automated encouragement, participants might receive automated standardized or tailored messages and feedback, either incorporated into the interventions or generated automatically based on the engagement and progress of the participants. Within this level, we also included the availability of support on demand which allows participants to actively seek help. We made this decision because, in the majority of trials that this option is offered, participants do not proactively seek help **(reference?)**. The following category, human encouragement, is similar to the automated one, with the only difference being that the standardized or tailored messages are provided by a human and can be delivered through text or motivational telephone calls. Both human and automated encouragement lie on the accountability-support model, which aims to motivate participants and encourage the use of the programs (Mohr et al., 2011). In all the previously mentioned levels, no support related to the therapeutic content is provided. The final level consisted of guided interventions in which assistance related to the therapeutic material is actively delivered by professionals or trained lay people. 
+
+**Control groups:** Control groups presented in the included studies were treatment as usual, waiting list control groups and other types of control. Other types of controls included mainly attention or psychological placebo controls, where minimal psychoeducation on depression or online discussion forums were provided to participants. 
+
+**Outcome-Diagnosis:** Participants were divided into three groups based on the severity of symptoms presented at the time of recruitment: a) Individuals with diagnosed major depressive disorder, b) individuals with any mood disorder (Major depression or any other diagnosed depressive disorder such as dysthymia, minor depression, premenstrual dysphoric disorder, etc., or c) individuals that scored above a threshold on self-reported questionnaires for depression severity. 
+
+**Study Design-Risk of bias:** Studies were judged as low risk, some concerns or high risk based on the Cochrane Risk of Bias Tool 2, as described below. We created a binary factor based on the overall assessment for each study by including either all studies or by excluding low-quality studies (judged as an overall high risk) based on the recommendations set by Eysenck (1995).
+
+**Study Design-Time of assessment:** To examine whether the effects of digital intervention on symptom reduction persist over time we created a dichotomous variable with: a) studies reporting effect sizes immediately after treatment (post-treatment) or, b) those that also included follow-up data from at least 24 weeks after baseline assessment.
+
+**Study risk of bias assessment:** The risk of bias was assessed with the use of the revised Cochrane Collaboration’s Risk of Bias tool 2.0 for individually randomized parallel-group trials (Sternet et al., 2019).  The instrument follows five main domains with several subitems that can result in an overall score of low risk, some concerns, or high risk. The domains include: 1) Bias due to inconsistencies in the randomization procedures (sequence generation, allocation concealment, sample imbalances), 2) Bias due to the deviations from intended interventions for the effect of the assignment to the intervention, 3) Bias introduced by unavailable outcome data, 4) Bias due to the outcome measurements incorporated in each study, 5) Bias due to selective outcome publication. Studies were rated as an overall low-risk when all five domains received a low-risk assessment. Studies were categorized as an overall high risk when they were rated as high risk in at least one domain or assessed as some concerns in at least three domains. In all other cases, studies were judged as an overall rating of some concerns.
+
+
+
+## Multiverse Meta-Analysis
+
+```{r echo = FALSE}
+k_possible_combinations <- length(unique(specifications$wf_1)) * length(unique(specifications$wf_2)) * length(unique(specifications$wf_3)) * length(unique(specifications$wf_4)) * length(unique(specifications$wf_5)) * length(unique(specifications$wf_6)) * length(unique(specifications$wf_7)) * length(unique(specifications$wf_8)) * length(unique(specifications$ma_method))
+```
+
+Meta-analysts have to decide between several equally defensible choices at multiple stages in any meta-analysis: which studies to meta-analyze based on study inclusion criteria (*Which* factors) and how to analyze them (*How* factors), as there are different choices of effect size estimators. In a multiverse meta-analysis, researchers identify all possible stages for analytical decisions, determine reasonable alternative choices at each stage, and implement all of them. When considering reasonable choices for the *How* factors, we included eight meta-analytical models for pooling the summary effect size: random effects, fixed effect, three-level, robust variance estimation (RVE), precision-effect test and precision-effect estimate with standard errors (PET-PEESE), *p*-uniform, Unrestricted Weighted Least Squares (UWLS), and Weighted Average of Adequately Powered models (WAAP). 
+
+We used the random effects model with a restricted maximum likelihood estimator, which considers not only the sample's variability due to random error but also the expected heterogeneity due to differences in methodological decisions and study characteristics. We also performed a fixed-effect analysis which assumes that all samples are selected from the same population and any observed variability is attributed to chance (Borenstein et al., 2010; Borenstein et al., 2021,++). To handle effect size dependency (e.g. when studies report multiple instruments on the same outcome, or two intervention arms are compared to the same control group within a study), we used a 3-level model and a Robust Variance Estimation model. These approaches address the interdependence of effect sizes and are carried out by using all reported effect sizes within one study, regardless of whether information about how the effect sizes are correlated or the specific nature of dependence is available (Pustejovsky & Tipton, 2022; Van der Noortgate et al., 2013).
+
+To address small study effects from potential biases like publication and reporting, or clinical heterogeneity, which can inflate treatment effectiveness, we applied four methods. PET-PEESE, a regression-based technique, adjusts for the relationship between effect sizes and standard errors to correct for these effects (Bartoš et al., 2022; Stanley, 2017). P-uniform* is a selection model approach that uses a random-effects model to differentiate and correct for publication bias between statistically significant and non-significant effect sizes (van Aert & van Assen, 2020). Both methods aim for precise effect size estimates and bias correction in meta-analyses.
+
+We additionally used the Unrestricted Weighted Least Squares (UWLS) estimator and a specific version of it called the Weighted Average of Adequately Powered (WAAP) estimator (Stanley et al., 2022). Both estimators might have advantages over other estimators in meta-analyses with studies of varying sample sizes and heterogeneity in both the presence and absence of publication bias (Stanley et al., 2022). WAAP excludes small studies and only includes studies with 80% or higher statistical power. Simulation studies suggest that when there is publication-selection bias, WAAP is less biased than other weighted average estimators, such as the random-effects, fixed-effect, and UWLS estimators.
+
+As a result, our multiverse meta-analysis could theoretically report a total of `r k_possible_combinations` meta-analyses resulting from all possible combinations of *Which* and *How* Factors. We decided to include only meta-analyses with data from at least 10 unique primary studies in our main analyses, as some methods such as PET-PEESE require this amount of effect sizes to be interpretable. We additionally conducted sensitivity analysis with different cutoffs for required meta-analyses size, namely 2 studies, 5 studies, 25 studies, and 50 studies. These can be found in the Online Supplemental material.
+
+#### **Descriptive Specification Curve**
+
+We used descriptive specification curve plots to inspect gaps and patterns in the meta-analytic summary effects for all *Which* and *How* Factor combinations. The descriptive meta-analytic specification plot displays all possible meta-analyses and visualizes each specification’s *Which* and *How* Factor combination, including the resulting meta-analytic summary effects ordered by magnitude with their respective 95% confidence intervals.
+
+We reported the percentages of meta-analyses that produced a.) summary effect sizes, and b.) 95% confidence intervals larger than two relevant cutoffs: either a null effect (Hedges' *g* = 0) or a clinically relevant effect size of Hedges' *g* = 0.24 (Cuijpers 2014).
+
+#### **Vibrations of effects**
+
+Additionally, we explored Vibration of Effects (VoE) to assess the potential for diverging results stemming from diverse analytical choices [Patel 2015]. Similarly to the descriptive specification curve plot, VoE displays all possible meta-analyses based on various analytical strategies. Under this framework, the *Which* and *How* factors are potential sources of heterogeneity that can generate VoE, for example, the different types of interventions, different statistical methods, and different control groups. 
+
+The resulting VoE plot visually represents both the magnitude of the effects in all meta-analyses and their statistical conclusions, that is whether the meta-analyses would be statistically significant at *p* < .05 [El Bahri 2022]. We created heat maps to represent VoE and plotted the effect sizes on the x-axis, and the logarithm of the *p*-value of the test for the difference between the digital interventions and control groups on the y-axis. We would consider a substantial VoE as the presence of a *Janus effect* regarding effect size, that is, when the direction of an effect would be in the opposite directions in the 90th compared with the 10th percentile.
+
+
+
+#### **Exploration of analytical decisions associated with magnitude of effect sizes**
+
+To ensure robust results and mitigate potential distortions from non-normally distributed magnitudes of effect sizes, we examined the relationship between each methodological choice and the variation in effect size using multiple median regressions.
+Additionally, we created descriptive specification curve plots and rain cloud plots (Allen et al., 2021) to visually inspect the differences between each analytic decision. 
+
+#### **Statistical Models**
+
+All statistical analyses were carried out with the use of the Metafor (Viechtbauer, 2010) and puniform* packages, in the latest version of R (xxx). To investigate the effectiveness of digital interventions in reducing the symptoms of depression when compared to control, we used continuous data (means, standard deviations, number of participants in each group) and computed the standardized mean differences between groups at post-treatment and follow-up assessments (expressed as Hedges’g). If these data were not reported, we retrieved alternative statistical information (dichotomous outcomes, mean change, p values) that were converted to effect sizes with the use of Metapsy tools (Harrer et al., 2022). 
+
+
+# Results
+
+## Study selection
+
+The database search in Pubmed, Embase and PsycINFO yielded 19,579 records.  After the removal of 8,749 duplicates, 10,830 titles and abstracts were screened. Subsequently, 1,146 records were assessed on a full-text basis, leading to the inclusion of 109 papers. Additionally, 14 more papers were included from other sources, resulting in a total of 123 eligible papers for the multiverse meta-analysis. For a full description of the screening process, please consult the PRISMA Flowchart (Figure 1.). Table 1 presents the distribution of the meta-analyses according to each methodological choice.
+
+```{r echo=FALSE}
+k <- specifications_k2$k
+# Calculate counts for each threshold
+thresholds <- c(2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+
+# For the first threshold (10), count exact matches. For the rest, count values >= threshold.
+counts <- sapply(thresholds, function(x) {
+  if (x == 2) {
+    return(sum(k == x))
+  } else {
+    return(sum(k >= x))
+  }
+})
+
+# Convert counts to percentages
+percentages <- counts / length(k) * 100
+
+# Create dataframe for plotting
+df_percent <- data.frame(
+  thresholds = thresholds,
+  percentages = percentages
+)
+
+# Create the flipped histogram with percentages
+prisma_histogram <- ggplot(data = df_percent, 
+                           aes(x = as.factor(thresholds), y = percentages)) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+  geom_text(aes(label = sprintf("%.1f%%", percentages)), hjust = -.20, vjust = 0) +
+  labs(title = "Percentage of meta-analyses according to the number of included trials", 
+       x = "k", 
+       y = "Percentage") +
+  theme_minimal() +
+  coord_flip() +
+  scale_x_discrete(labels = c("=2",">=5", ">=10", ">=20", ">=30", ">=40", ">=50", ">=60", ">=70", ">=80", ">=90", ">=100")) +
+  theme(text = element_text(size = 12)) +
+  expand_limits(y = c(0, max(percentages) + 1))
+
+ggsave("figures/prisma_histogram.pdf", 
+       prisma_histogram, 
+       width = 10, 
+       height = 5,
+       dpi = "retina"
+)
+```
+
+### Figure 1. *PRISMA Flowchart of the Inclusion of Primary Studies*
+
+```{r prisma_histogram, fig.width = 5, fig.height = 5, echo = FALSE}
+knitr::include_graphics("figures/prisma_histogram.pdf")
+```
+
+*Note.* [can be added to prisma figure see Bahri 2022]
+
+\newpage
+
+### Table 1. *Summary characteristics of included primary studies according to each possible methodological choice.*
+
+```{r}
+df_grouped <- data_multiverse %>%
+  filter(study != "Araya, 2021b") %>% 
+  group_by(study) %>%
+  summarise(across(wf_1:wf_8, ~ paste(unique(.), collapse = " and ")))
+
+table_data_multiverse <- df_grouped %>% 
+  select("Tech" = wf_1,
+         "Guidance" = wf_2,
+         "Group" = wf_3,
+         "Intervention" = wf_4,
+         "Control" = wf_5,
+         "Diagnosis" = wf_6,
+         "Risk of Bias" = wf_7,
+         "Time" = wf_8
+  ) %>%  
+  mutate(across("Tech":"Time", str_to_title),
+         across("Tech":"Time", as.factor ),
+         
+         "Target population" = case_match(
+           Group,
+           "Adul" ~ "Adults",
+           "Med" ~ "Medical populations",
+           "Other Group" ~ "Other populations",
+           "Ppd" ~ "Women with postpartum depression",
+           "Young" ~ "Young populations",
+           .default = Group
+         ),
+         
+         "Intervention: Treatment modality" = case_match(
+           Intervention,
+           "Cbt-Based" ~ "CBT-based interventions",
+           "Not-Cbt-Based" ~ "Non-CBT-based interventions",
+           "Cbt-Based And Not-Cbt-Based" ~ "CBT-based and not-CBT based interventions",
+           "Not-Cbt-Based And Cbt-Based" ~ "CBT-based and not-CBT based interventions",
+           .default = Intervention
+         ),
+         
+         "Intervention: Format of delivery" = case_match(
+           Tech,
+           "Mobile" ~ "Mobilephone-based interventions",
+           "Website" ~ "Website-based interventions",
+           "Both" ~ "Mobilephone-based and website-based interventions",
+           "Both And Website" ~ "Mobilephone-based and website-based interventions",
+           .default = Tech
+           
+         ),
+         "Intervention: Level of Support" = case_match(
+           Guidance,
+           "Minimal To No Support" ~ "Level 1: Minimal to no support",
+           "Automated Encouragement" ~ "Level 2: Automated Encouragement",
+           "Human Encouragement" ~ "Level 3: Human Encouragement",
+           "Guided" ~ "Level 4: Human Guided",
+           .default = "Compared multiple levels of support"
+         ),
+         
+         "Control Condition" = case_match(
+           Control,
+           "Cau" ~ "Compared to care as usual",
+           "Wl" ~ "Compared to waitlist control condition",
+           "Other Ctr" ~ "Compared to other control conditions",
+           .default = "Compared intervention to multiple control conditions"
+         ),
+         
+         "Outcomes (3)" = case_match(
+           Diagnosis,
+           "Cut" ~ "Self-reported questionnaire (exceeding a cut-off)",
+           "Mdd" ~ "Diagnosis of major depressive disorder",
+           "Mood" ~ "Diagnosis of mood disorder",
+           .default = Diagnosis
+         ),
+         
+         "Study Design: Risk of Bias" = case_match(
+           `Risk of Bias`,
+           "High Risk" ~ "High Risk of Bias",
+           "Low Risk" ~ "Low Risk of Bias",
+           "Some Concerns" ~ "Some Concerns",
+           .default = `Risk of Bias`
+         ),
+         
+         "Study Design: Time Point" = case_match(
+           Time,
+           "Post" ~ "Measures taken post-intervention",
+           "Post And Follow-Up" ~ "Measures taken post-intervention and at follow-up after 24 weeks",
+           .default = Time
+         )
+  ) %>% 
+  select(-Tech, -Guidance, -Group, -Intervention, -Control, -Time, -Diagnosis, - `Risk of Bias` )
+
+summary_table_data_multiverse <- table_data_multiverse %>% 
+  tbl_summary() %>% 
+  as_flex_table() %>% 
+  theme_booktabs() %>% 
+  flextable::italic(italic = TRUE, part = "header") %>% 
+  autofit()  %>% 
+  add_header_lines(values = c("Summary characteristics of included primary studies.", "PICOS")) %>% 
+  add_footer_lines("PICOS stands for: Patients; Intervention; Comparator; Outcomes; Study design.")
+
+summary_table_data_multiverse
+```
+
+
+### Table 1. *Summary characteristics of included effect sizes from all primary studies according to each possible methodological choice for Which Factors.*
+
+```{r echo = FALSE}
+table_data_multiverse <- data_multiverse %>% 
+  select("Tech" = wf_1,
+         "Guidance" = wf_2,
+         "Group" = wf_3,
+         "Intervention" = wf_4,
+         "Control" = wf_5,
+         "Diagnosis" = wf_6,
+         "Risk of Bias" = wf_7,
+         "Time" = wf_8
+  ) %>%  
+  mutate(across("Tech":"Time", str_to_title),
+         across("Tech":"Time", as.factor ),
+         
+         "Target Population (5)" = case_match(
+           Group,
+           "Adul" ~ "Adults",
+           "Med" ~ "Medical populations",
+           "Other Group" ~ "Other populations",
+           "Ppd" ~ "Women with postpartum depression",
+           "Young" ~ "Young populations"
+         ),
+
+         "Intervention: Treatment Modality (2)" = case_match(
+           Intervention,
+           "Cbt-Based" ~ "CBT-based interventions",
+           "Not-Cbt-Based" ~ "Non-CBT-based interventions"
+         ),
+         "Intervention: Format of Delivery (3)" = case_match(
+           Tech,
+           "Mobile" ~ "Mobilephone-based interventions",
+           "Website" ~ "Website-based interventions",
+           "Both" ~ "Mobilephone-based and website-based interventions"
+         ),
+         "Intervention: Level of Support (4)" = case_match(
+           Guidance,
+           "Minimal To No Support" ~ "Level 1: Minimal to no support",
+           "Automated Encouragement" ~ "Level 2: Automated Encouragement",
+           "Human Encouragement" ~ "Level 3: Human Encouragement",
+           "Guided" ~ "Level 4: Human Guided"
+         ),
+         "Control Condition (3)" = case_match(
+           Control,
+           "Cau" ~ "Compared to care as usual",
+           "Wl" ~ "Compared to waitlist control condition",
+           "Other Ctr" ~ "Compared to other control conditions"
+         ),
+         
+                  
+         "Outcomes (3)" = case_match(
+           Diagnosis,
+           "Cut" ~ "Self-reported questionnaire (exceeding a cut-off)",
+           "Mdd" ~ "Diagnosis of major depressive disorder",
+           "Mood" ~ "Diagnosis of mood disorder",
+         ),
+         
+         "Study Design: Risk of Bias (3)" = case_match(
+           `Risk of Bias`,
+           "High Risk" ~ "High Risk of Bias",
+           "Low Risk" ~ "Low Risk of Bias",
+           "Some Concerns" ~ "Some Concerns"
+         ),
+         "Study Design: Time Point (2)" = case_match(
+           Time,
+           "Post" ~ "Measures taken at post-intervention",
+           "Follow-Up" ~ "Measures taken at follow-up after 24 weeks"
+         )
+  ) %>% 
+  select(-Tech, -Guidance, -Group, -Intervention, -Control, -Time, -Diagnosis, - `Risk of Bias` )
+
+summary_table_data_multiverse <- table_data_multiverse %>% 
+  tbl_summary() %>% 
+  as_flex_table() %>% 
+  theme_booktabs() %>% 
+  flextable::italic(italic = TRUE, part = "header") %>% 
+  autofit()  %>% 
+  add_header_lines(values = c("Summary characteristics of included primary studies according to each possible methodological choice.", "PICOS")) %>% 
+  add_footer_lines("PICOS stands for: Patients; Intervention; Comparator; Outcomes; Study design.")
+
+summary_table_data_multiverse
+```
+
+
+\newpage
+
+## Multiverse Meta-Analysis
+
+```{r echo = F}
+k_possible_combinations <- length(unique(specifications$wf_1)) * length(unique(specifications$wf_2)) * length(unique(specifications$wf_3)) * length(unique(specifications$wf_4)) * length(unique(specifications$wf_5)) * length(unique(specifications$wf_6)) * length(unique(specifications$wf_7)) * length(unique(specifications$wf_8)) * length(unique(specifications$ma_method))
+
+k_ma <- nrow(specifications)
+k_ma_k2 <- nrow(specifications_k2)
+k_included_perc <- round(nrow(specifications)/k_possible_combinations*100, 0)
+k_included_perc_k2 <- round(nrow(specifications_k2)/k_possible_combinations*100, 0)
+
+k_rct_combinations <- length(unique(specifications$set))
+
+
+k_10 <- specifications %>% filter(k == 10) %>% nrow()
+k_10_perc <- k_10/k_ma *100 %>% round(0)
+
+min_k_25 <- specifications %>% filter(k >= 25) %>% nrow()
+min_k_25_perc <- min_k_25/k_ma * 100 %>% round(0)
+
+min_k_50 <- specifications %>% filter(k >= 50) %>% nrow()
+min_k_50_perc <- min_k_50/k_ma * 100 %>% round(0)
+
+```
+
+
+To ensure the adequate calculation of summary effects, we included meta-analyses with at least 10 included primary studies in our main analyses, resulting in `r k_ma` (i.e., `r k_included_perc`% of all `r k_possible_combinations` possible combinations of our specified *Which* and *How* factors) meta-analyses. 
+
+Among the `r k_ma` conducted meta-analyses, effect sizes for the efficacy of digital interventions for depression ranged from Hedges g = `r range(specifications$mean)[1]` to `r range(specifications$mean)[2]`, with a mean of `r mean(specifications$mean)` and a median of `r median(specifications$mean)`. The effect sizes were positive at both the 10th percentile (ES = `r tenth_percentile`) and at the 90th percentile (ES = `r ninetieth_percentile`). About `r k_10_perc`% (n = `r k_10`) of these meta-analyses included 10 trials, `r min_k_25_perc`% (n = `r min_k_25`) at least 25, and `r min_k_50_perc`% (n = `r min_k_50`) at least 50.
+
+### Descriptive Specification Curve and Vibration of Effects
+
+The descriptive specification curve showed that the summary effect sizes of meta-analyses can vary from null effects to large effect sizes. See Figure 2 for a detailed visualization of effect sizes and their respective 95% confidence intervals of the `r nrow(data_specifications)` meta-analyses based on all combinations of *Which* and *How* factors. The estimated mean Hedges' *g* of the various subsets ranged from `r range(specifications$mean)[1]` to `r range(specifications$mean)[2]`, with an interquartile range of `r iqr[1]` to `r iqr[2]`. In total, `r round(percentage_mean_over_zero, 0)`% of the estimated means were greater than 0, and `r round(percentage_ci_over_zero,0)`% of these had 95% *CIs* that did not include 0 (i.e., estimated means greater than 0 which would have returned a two-tailed *p*-value of less than .05).
+
+In total, `r round(percentage_mean_over_clinically_relevance, 0)`% reached a clinically relevant effect size of Hedges' *g* \> 0.24, and `r round(percentage_ci_over_clinically_relevance,0)`% of the summary effect sizes had 95% *CIs* larger than a this clinically relevant effect size.
+
+In all meta-analyses, `r ma_below_tenth` had a Hedges' *g* below the 10th percentile (`r ma_below_zero_sig_percent`% of them with significant differences in favor of the control group) and `r ma_above_ninetieth` had a Hedges' *g* above the 90th percentile (`r ma_above_ninetieth_sig_percent` % with significant differences in favor of the intervention). Among all meta-analyses, `r ma_sig` (`r ma_sig_percent`%) showed a statistically significant difference in favor of digital interventions, while `r ma_not_sig` (`r ma_not_sig_percent`%) failed to do so. No meta-analysis (`r ma_below_zero_sig`%) showed a statistically significant difference in favor of the control condition. 
+
+Figure 3 presents the heat map of the VoE. Among the meta-analyses of at least 10 trials, the sign of the Hedges' *g* at the 10th percentile and at the 90th percentile were both positive (*g* = `r tenth_percentile`  vs. *g* = `r ninetieth_percentile`), suggesting the absence of substantial vibration. This pattern persisted for meta-analyses of at least 2, 5, 25 and 50 trials and 50 trials, see Figure S1 for these sensitivity analyses.
+
+
+```{r, echo = F}
+open_a3
+```
+
+#### Figure 2. *Descriptive Specification Curve Plot of all possible meta-analyses on digital interventions for depression disorders*
+
+\n
+
+```{r descr-spec-curve, out.width = "220%", echo = FALSE}
+knitr::include_graphics("figures/descriptive_spec_curve.pdf")
+```
+
+```{r, echo = F}
+close_a3
+```
+
+
+```{r, echo = F}
+
+```
+
+\n
+
+*Note.* The top panel shows the meta-analytic summary effects (*g*) for each specification with their 95% confidence interval. The summary effects are sorted by their magnitude, ranging from lower to higher. Connecting the different summary effects results in the solid line, which is the specification curve. A horizontal dashed line of no effect is shown at *g* = 0 and a red dotted line is shown to indicate a small, yet clinically relevant effect size at *g* = 0.24. Published meta-analyses are shown on their respective position on the specification curve. The vertical columns in the bottom panel represent factor combinations of all *Which* factors. These include different technologies, types of guidance, diagnoses, recruitment strategies, control conditions, and strategies to deal with risk of biases. The *How* factors include several meta-analytical estimators: 3-level meta-analytical models, RVE = robust variance estimation, REML = restricted maximum likelihood estimation, FE = fixed effect model, *p*-uniform\*, PET-PEESE = Precision-Effect Test and Precision-Effect Estimate with Standard Errors, UWLS = Unrestricted Weighted Least Squares, and WAAP = Weighted Average of Adequately Powered). Each vertical column is color-coded, signifying the number of samples included in a specification (hot spectral colors for more included samples vs. cool spectral colors for less included samples). The overall pattern of the specification curve indicates that specifications with many samples and/or narrow confidence intervals are closer to the interquartile range of estimated means as opposed to specifications with only a few samples and/or wider confidence intervals.
+
+\newpage
+
+
+#### Figure 3: Vibration of effects for the comparison of digital interventions with control conditions.
+```{r figure-voe10, fig.fullwidth=TRUE,  fig.height = 10, fig.width = 15, echo = FALSE}
+knitr::include_graphics("figures/voe10.pdf")
+```
+
+Notes. A negative effect size favors the control group, and a positive effect size favors the digital intervention. The points represent the meta-analyses. The colors represent the densities. The analysis is present for meta-analyses containing 10 primary studies and in the supplement for meta-analyses including 2, 5, 25 or 50 primary studies.
+
+\newpage
+
+Taken together, these results point to the overall efficacy of digital health interventions in treating depressive disorders across a majority of the different combinations of *Which* factors and *How* factors. We will describe specific patterns according to different *Which* and *How* factors in the following section.
+
+
+
+### Analytical decisions associated with VoE 
+
+
+```{r, echo = F, results = 'hide', fig.show='hide', warning=F}
+## Relevel Factors
+specifications <- specifications %>%
+  mutate(across(wf_1:wf_8, ~ ifelse(startsWith(., "total_"), "Combined", .)))
+
+specifications$wf_1 <-      relevel(as.factor(specifications$wf_1), ref="Combined" )
+specifications$wf_2 <-      relevel(as.factor(specifications$wf_2), ref="Combined" )
+specifications$wf_3 <-      relevel(as.factor(specifications$wf_3), ref="Combined" )
+specifications$wf_4 <-      relevel(as.factor(specifications$wf_4), ref="Combined" )
+specifications$wf_5 <-      relevel(as.factor(specifications$wf_5), ref="Combined" )
+specifications$wf_6 <-      relevel(as.factor(specifications$wf_6), ref="Combined" )
+specifications$wf_7 <-      relevel(as.factor(specifications$wf_7), ref="Combined" )
+specifications$wf_8 <-      relevel(as.factor(specifications$wf_8), ref="post" )
+specifications$ma_method <- relevel(as.factor(specifications$ma_method), ref="rve" )
+```
+
+
+```{r, echo = F, results = 'hide', fig.show='hide', warning=F}
+modQuantile <- quantreg::rq(mean ~ wf_1 + wf_2 + wf_3 + wf_4 + wf_5 + 
+                              wf_6 + wf_7 + wf_8 + ma_method, 
+                            data = specifications, tau = 0.5)
+
+# Create Table
+recapmodQuantile <- summary(modQuantile, se = "boot") 
+
+data_modQuantile <- data.frame(estimator=round(as.numeric(recapmodQuantile$coefficients[,1]),2))
+data_modQuantile$SE <- round(as.numeric(recapmodQuantile$coefficients[,2]),3)
+
+data_modQuantile$CI_lower <- round(data_modQuantile$estimator - 1.96 * data_modQuantile$SE, 2)
+data_modQuantile$CI_upper <- round(data_modQuantile$estimator + 1.96 * data_modQuantile$SE, 2)
+data_modQuantile$CI95 <- paste0("[", data_modQuantile$CI_lower,", ", data_modQuantile$CI_upper ,"]") 
+data_modQuantile$p <- round(as.numeric(recapmodQuantile$coefficients[,4]) ,5)
+data_modQuantile <- data_modQuantile[c(2:nrow(data_modQuantile)),]
+data_modQuantile$variable <-  names(coef(modQuantile)) [c(2:length(coef(modQuantile)))] 
+
+quant_reg_clean <- data_modQuantile %>% 
+  select(
+    Variable = variable,
+    Beta = estimator,
+    SE,
+    CI95, 
+    p)
+
+table_quant_reg <- quant_reg_clean %>%
+  flextable() %>% 
+  autofit()
+
+# Print table
+TAB_quant <- data_modQuantile %>% 
+  mutate(
+    Criteria = variable,
+    Beta = estimator,
+    SE,
+    p,
+    VALUE = paste(Beta, CI95),
+    Criteria_renamed = case_match(
+      variable,
+      "wf_1mobile" ~ "Tech: Mobile",
+      "wf_1website" ~ "Tech: Website",
+      "wf_2automated encouragement" ~ "Guidance: Automated Encouragement",
+      "wf_2guided" ~ "Guidance: Guided",
+      "wf_2human encouragement" ~ "Guidance: Human Encouragement",
+      "wf_2minimal to no support" ~ "Guidance: Minimal to no Support",
+      "wf_3adul" ~ "Group: Adults",
+      "wf_3med" ~ "Group: Medical",
+      "wf_3other group" ~ "Group: Other",
+      "wf_3ppd" ~ "Group: PPD",
+      "wf_3young" ~ "Group: Young",
+      "wf_4cbt-based" ~ "Intervention: CBT-Based",
+      "wf_4not-cbt-based" ~ "Intervention: Not CBT-Based",
+      "wf_5cau" ~ "Control: CAU",
+      "wf_5other ctr" ~ "Control: Other",
+      "wf_5wl" ~ "Control: Wait List",
+      "wf_6cut" ~ "Diagnoses: Cutoff",
+      "wf_6mdd" ~ "Diagnoses: MDD",
+      "wf_6mood" ~ "Diagnoses: Mood Disorder",
+      "wf_7exclude_worst" ~ "ROB: Excluded Worst",
+      "wf_7include_best" ~ "ROB: Include Best",
+      "wf_8follow-up" ~ "Time: Follow Up",
+      "ma_method3-level" ~ "Method: 3-Level",
+      "ma_methodfe" ~ "Method: FE",
+      "ma_methodp-uniform" ~ "Method: p-uniform",
+      "ma_methodpet-peese" ~ "Method: PET-PEESE",
+      "ma_methodpet-peese (corrected)" ~ "Method: PET-PEESE (corrected)",
+      "ma_methodreml" ~ "Method: REML",
+      "ma_methoduwls" ~ "Method: UWLS",
+      "ma_methodwaap" ~ "Method: WAAP",
+      .default = variable
+    ),
+    Criteria_renamed = factor(Criteria_renamed, 
+                              rev(c(
+                                "Tech: Website",
+                                "Tech: Mobile",    
+                                "Tech: All",  
+                                
+                                "Guidance: Minimal to no Support",  
+                                "Guidance: Automated Encouragement",  
+                                "Guidance: Human Encouragement", 
+                                "Guidance: Guided",  
+                                "Guidance: All",  
+                                
+                                "Group: Other",
+                                "Group: Medical",
+                                "Group: PPD",
+                                "Group: Young",
+                                "Group: Adults",
+                                "Group: All",
+                                
+                                "Intervention: CBT-Based",
+                                "Intervention: Not CBT-Based",  
+                                "Intervention: All", 
+                                
+                                # wf_5 <- c("cau", "other ctr", "wl", "total_wf_5")
+                                
+                                
+                                
+                                "Control: CAU",
+                                "Control: Other",  
+                                "Control: Wait List", 
+                                "Control: All", 
+                                
+                                # wf_6 <- c("cut",
+                                #        "mood",
+                                #        "mdd",
+                                #        "total_wf_6")
+                                "Diagnoses: Cutoff",
+                                "Diagnoses: Mood Disorder",
+                                "Diagnoses: MDD",
+                                "Diagnoses: All",
+                                
+                                # wf_7 <- c("exclude_worst", "total_wf_7")
+                                "ROB: Include Best",  
+                                "ROB: Excluded Worst",  
+                                "ROB: All ROB",
+                                
+                                # wf_8 <- c("follow-up", "post")
+                                "Time: Follow Up",
+                                "Time: Post Intervention",
+                                
+                                "Method: 3-Level",
+                                "Method: RVE",
+                                "Method: REML",
+                                "Method: FE",
+                                "Method: p-uniform",
+                                "Method: PET-PEESE",
+                                "Method: PET-PEESE (corrected)",
+                                "Method: UWLS",
+                                "Method: WAAP"
+                              ))),
+    BOLD_VECT = ifelse(Beta >= 0.1 | Beta <= -0.10, 2, 1)) #DEFINE THE TEXT THAT WILL BE IN BOLD IN THE FIGURE
+
+# DELETE THE NA from the VALUES
+
+figure_quant_reg <- ggplot(TAB_quant, 
+                           aes(x=Beta,y = Criteria_renamed))+
+  geom_point()+
+  annotate("rect", xmin = 0.2, xmax = .3, ymin = 0, ymax = 31.5, 
+           alpha = .25,fill = "red")+ 
+  annotate("rect", xmin = -.3, xmax = -0.2, ymin = 0, ymax = 31.5, 
+           alpha = .25,fill = "red")+
+  annotate("rect", xmin = 0.1, xmax = 0.2, ymin = 0, ymax = 31.5, 
+           alpha = .25,fill = "orange")+ 
+  annotate("rect", xmin = -0.2, xmax = -0.1, ymin = 0, ymax = 31.5, 
+           alpha = .25,fill = "orange")+
+  annotate("rect", xmin = -0.1, xmax = 0.1, ymin = 0, ymax = 31.5, 
+           alpha = .25,fill = "green") + 
+  geom_point() + 
+  theme_classic() + 
+  theme(legend.position = "none", 
+        axis.ticks = element_blank(), 
+        axis.text.x = element_text(colour="grey20",angle=0,hjust=.5,vjust=.5,face="bold"),
+        axis.text.y = element_blank(), 
+        axis.title.y = element_blank(),
+        axis.title.x = element_text(hjust=0.67))+ 
+  xlab("Impact of each methodological choice on the point estimate")+
+  geom_text(aes(fontface=BOLD_VECT,
+                x=-.75,
+                y=Criteria_renamed, 
+                label=(as.character(VALUE))),
+            size=3)+
+  geom_text(aes(fontface=BOLD_VECT,
+                x=-1.5,
+                y=Criteria_renamed, 
+                label=(as.character(Criteria_renamed))),
+            size=3,hjust = 0) + 
+  scale_x_continuous(breaks=c(-0.3,-.2, -0.1, 0, 0.1, .2, 0.3, 2))+
+  geom_vline(xintercept = 0, linetype="dotted")+
+  geom_vline(xintercept = -.3, linetype="dotted")+
+  geom_vline(xintercept = -0.2, linetype="dotted")+
+  geom_vline(xintercept = -0.1, linetype="dotted")+
+  geom_vline(xintercept = 0.1, linetype="dotted")+
+  geom_vline(xintercept = 0.2, linetype="dotted")+
+  geom_vline(xintercept = .3, linetype="dotted") +
+  
+  # Adding header for the first geom_text
+  annotate("text", x = -0.75, 
+           y = 31.5, # Adjust 'y' as necessary
+           label = "Beta (95%CI)", 
+           fontface = "bold", 
+           hjust = 0.5) + 
+  
+  # Adding header for the second geom_text
+  annotate("text", x = -1.5, y = 31.5, # Adjust 'y' as necessary
+           label = "Criterion", 
+           fontface = "bold", hjust = 0) + 
+  coord_cartesian(ylim = c(1, 32))
+
+ggsave("figures/figure_quant_reg.pdf", 
+       figure_quant_reg, 
+       width = 12, 
+       height = 7.5,
+       dpi = "retina"
+)
+
+```
+
+```{r echo=FALSE, results=FALSE}
+data_modQuantile %>% arrange(desc(estimator)) %>% slice(1:5)
+```
+
+The analytical decisions associated with the greatest increase in effect sizes (see Table S1) were inclusion of studies using only guided interventions (+ `r pull(filter(data_modQuantile,variable == "wf_2guided"), estimator)` vs. inclusion of all types of guidance), comparison with wait list control groups (+`r pull(filter(data_modQuantile,variable == "wf_5wl"), estimator)` vs. inclusion of all control groups), inclusion of mobile-based interventions +`r pull(filter(data_modQuantile,variable == "wf_1mobile"), estimator)` vs. inclusion of all delivery technologies, and populations diagnosed with major depressive disorder (+`r pull(filter(data_modQuantile,variable == "wf_6mdd"), estimator)` vs. inclusion of all diagnoses). 
+
+```{r echo=FALSE, results=FALSE}
+data_modQuantile %>% arrange(estimator) %>% slice(1:10)
+```
+The methodical choices associated with the greatest decreases were the comparison with care as usual as a control condition  (`r pull(filter(data_modQuantile,variable == "wf_5cau"), estimator)` vs. all control conditions), the comparison at follow-up >24 weeks after the intervention  (`r pull(filter(data_modQuantile,variable == "wf_8follow-up"), estimator)` vs. compared post-intervention), and the inclusion of other populations, like like older adults or those not fitting into the remaining categories, (`r pull(filter(data_modQuantile,variable == "wf_3other group"), estimator)` vs. inclusion of all populations).
+Some populations were associated with lower effect size estimates (medical `r pull(filter(data_modQuantile, variable == "wf_3med"), estimator)` and other groups `r pull(filter(data_modQuantile, variable == "wf_3other group"), estimator)` vs. inclusion of all populations). In terms of level of guidance, minimal to no support guidance was associated with lower effect size estimates (`r pull(filter(data_modQuantile, variable == "wf_2minimal to no support"), estimator)` vs. inclusion of all types of guidance).
+
+Also, the use of four methods produced lower estimates, PET-PEESE (`r pull(filter(data_modQuantile,variable == "ma_methodpet-peese"), estimator)`), fixed effect model (`r pull(filter(data_modQuantile,variable == "ma_methodfe"), estimator)`), WAAP (`r pull(filter(data_modQuantile,variable == "ma_methodwaap"), estimator)`), UWLS (`r pull(filter(data_modQuantile,variable == "ma_methoduwls"), estimator)`) compared with the RVE estimator.
+
+\newpage 
+
+#### Figure 4: Multiple Median Regression
+```{r figure_quant_reg, fig.fullwidth=TRUE,  fig.height = 10, fig.width = 15, echo = FALSE}
+knitr::include_graphics("figures/figure_quant_reg.pdf")
+```
+
+
+*Note.* *Beta* coefficients from median regressions for each *Which* and *How* Factor.
+
+<br>
+
+Some *Which* factors appeared to consistently correlate with the magnitude of the summary effect, while others did not show a similar relationship. In the following section, these associations will be presented following their PICOs (Population, intervention, control, outcomes, study features).
+
+
+\newpage
+
+#### Population
+
+*Population type.* The type of population that was investigated in the analyses was found to have a substantial impact on the summary effect sizes. Meta-analyses that included `r str_to_lower(slice_max(table_wf_3, table_wf_3$"Median")[1])`, median *g* = `r as.numeric(slice_max(table_wf_3, table_wf_3$"Median")[2])`, 95% *CI* [`r as.numeric(slice_max(table_wf_3, table_wf_3$"Median")[3])`, `r as.numeric(slice_max(table_wf_3, table_wf_3$"Median")[4])`] with *k* = `r as.numeric(slice_max(table_wf_3, table_wf_3$"Median")[5])` included samples, produced larger effect size estimates than meta-analyses assessing `r str_to_lower(slice_min(table_wf_3, table_wf_3$"Median")[1])`, median *g* = `r as.numeric(slice_min(table_wf_3, table_wf_3$"Median")[2])` populations (i.e. XXX), 95% *CI* [`r as.numeric(slice_min(table_wf_3, table_wf_3$"Median")[3])`, `r as.numeric(slice_min(table_wf_3, table_wf_3$"Median")[4])`] with *k* = `r as.numeric(slice_min(table_wf_3, table_wf_3$"Median")[5])`. See Figure 5 for differences in summary effect sizes grouped by the type of population and Figure 6 for a descriptive specification curve plot focusing on adults.
+
+
+##### All Categories
+
+```{r echo = F}
+groups <- unique(table_wf_3$Group)
+
+for (group in groups) {
+  group_data <- filter(table_wf_3, Group == group)
+  median_g <- round(as.numeric(slice_max(group_data, group_data$Median)[2]), 2)
+  ci_lower <- round(as.numeric(slice_max(group_data, group_data$Median)[3]), 2)
+  ci_upper <- round(as.numeric(slice_max(group_data, group_data$Median)[4]), 2)
+  k_value <- round(as.numeric(slice_max(group_data, group_data$Median)[5]), 2)
+  cat(paste0("* ",  str_to_lower(group), ", median *g* = ", median_g,
+             ", 95% *CI* [", ci_lower, ", ", ci_upper, 
+             "] with *k* = ", k_value, " included samples.\n\n"))
+}
+
+for (group in groups) {
+  group_data <- filter(table_wf_3, Group == group)
+  median_g <- round(as.numeric(slice_max(group_data, group_data$Median)[2]), 2)
+  ci_lower <- round(as.numeric(slice_max(group_data, group_data$Median)[3]), 2)
+  ci_upper <- round(as.numeric(slice_max(group_data, group_data$Median)[4]), 2)
+  k_value <- round(as.numeric(slice_max(group_data, group_data$Median)[5]), 2)
+  cat(paste0("* ", str_to_lower(group), ", median *g* = ", median_g,
+             ", 95% *CI* [", ci_lower, ", ", ci_upper, 
+             "] with <i>k</i> = ", k_value, " included samples.\n\n"))
+}
+```
+
+* adults, median *g* = 0.5, 95% *CI* [0.23, 0.76] with *k* = 1022 included samples.
+
+* combined, median *g* = 0.41, 95% *CI* [0.18, 0.63] with *k* = 2209 included samples.
+
+* young, median *g* = 0.4, 95% *CI* [0.09, 0.69] with *k* = 10 included samples.
+
+* postpartum depression, median *g* = 0.38, 95% *CI* [-0.03, 0.75] with *k* = 67 included samples.
+
+* comorbidity group, median *g* = 0.35, 95% *CI* [0.14, 0.56] with *k* = 240 included samples.
+
+* other, median *g* = 0.22, 95% *CI* [0.02, 0.41] with *k* = 26 included samples.
+
+<br>
+
+\n
+
+##### Figure 5. *Raincloud plot of all meta-analyses on digital interventions for depression, grouped by different populations*
+
+\n
+
+```{r raincloud-wf3, fig.fullwidth=TRUE,  fig.height = 5, fig.width = 7, echo = FALSE}
+knitr::include_graphics("figures/fig_wf_3_raincloud.pdf")
+#fig_wf_3_raincloud
+```
+
+\n
+
+*Note.* Raincloud plots consist of three parts and depict the distribution of data (the cloud), a box-plot, and the raw data (the rain). They depict and visualize the distribution of summary effect sizes from all possible meta-analyses (produced by the multiverse meta-analysis) on target populations.
+
+```{r, echo = F}
+open_a3
+```
+
+##### Figure 6 *Descriptive specification curve highlighting meta-analyses in adults* 
+
+```{r descr-spec-curve_wf3, out.width = "220%", echo = FALSE}
+knitr::include_graphics("figures/fig_wf_3_spec_curve_adul.pdf")
+```
+
+\n
+
+```{r, echo = F}
+close_a3
+```
+
+*Note.* The top panel shows the meta-analytic summary effects (*g*) for each specification with their 95% confidence interval. The summary effects are sorted by their magnitude, ranging from lower to higher. Connecting the different summary effects results in the solid line, which is the specification curve. A horizontal dashed line of no effect is shown at *g* = 0 and a red dotted line is shown to indicate a small, yet clinically relevant effect size at *g* = 0.24. Published meta-analyses are shown on their respective position on the specification curve. The vertical columns in the bottom panel represent factor combinations of all *Which* factors. These include different technologies, types of guidance, diagnoses, recruitment strategies, control conditions, and strategies to deal with risk of biases. The *How* factors include several meta-analytical estimators: 3-level meta-analytical models, RVE = robust variance estimation, REML = restricted maximum likelihood estimation, FE = fixed effect model, *p*-uniform\*, PET-PEESE = Precision-Effect Test and Precision-Effect Estimate with Standard Errors, UWLS = Unrestricted Weighted Least Squares, and WAAP = Weighted Average of Adequately Powered). Each vertical column is color-coded, signifying the number of samples included in a specification (hot spectral colors for more included samples vs. cool spectral colors for less included samples). The overall pattern of the specification curve indicates that specifications with many samples and/or narrow confidence intervals are closer to the interquartile range of estimated means as opposed to specifications with only a few samples and/or wider confidence intervals.
+
+
+\n
+
+#### Intervention
+
+*Intervention type.* Whether the intervention was based on CBT or not produced negligible differences in effect size estimates. However, only very few meta-analyses could exist based on purely not-CBT based intervention (`r round(as.numeric(slice_max(table_wf_4, table_wf_4$"Median")$N)/sum(table_wf_4$N) * 100, 0)`% of meta-analyses). These meta-analyses that included samples based on `r str_to_lower(slice_max(table_wf_4, table_wf_4$"Median")[1])` samples, median *g* = `r as.numeric(slice_max(table_wf_4, table_wf_4$"Median")[2])`, 95% *CI* [`r as.numeric(slice_max(table_wf_4, table_wf_4$"Median")[3])`, `r as.numeric(slice_max(table_wf_4, table_wf_4$"Median")[4])`] with *k* = `r as.numeric(slice_max(table_wf_4, table_wf_4$"Median")[5])`, produced larger effect size estimates than meta-analyses based on `r str_to_lower(slice_min(table_wf_4, table_wf_4$"Median")[1])` samples, median *g* = `r as.numeric(slice_min(table_wf_4, table_wf_4$"Median")[2])`, 95% *CI* [`r as.numeric(slice_min(table_wf_4, table_wf_4$"Median")[3])`, `r as.numeric(slice_min(table_wf_4, table_wf_4$"Median")[4])`] with *k* = `r as.numeric(slice_min(table_wf_4, table_wf_4$"Median")[5])`. See Figure S2 for differences in summary effect sizes grouped by the type of intervention and Figure S3 for a descriptive specification curve plot focusing on non-CBT-based interventions.
+
+##### All Categories
+
+```{r echo = FALSE}
+groups <- unique(table_wf_4$Intervention)
+
+for (group in groups) {
+  group_data <- filter(table_wf_4, Intervention == group)
+  median_g <- round(as.numeric(slice_max(group_data, group_data$Median)[2]), 2)
+  ci_lower <- round(as.numeric(slice_max(group_data, group_data$Median)[3]), 2)
+  ci_upper <- round(as.numeric(slice_max(group_data, group_data$Median)[4]), 2)
+  k_value <- round(as.numeric(slice_max(group_data, group_data$Median)[5]), 2)
+  cat(paste0("* ",  str_to_lower(group), ", median *g* = ", median_g,
+             ", 95% *CI* [", ci_lower, ", ", ci_upper, 
+             "] with *k* = ", k_value, " included samples.\n\n"))
+}
+```
+
+* not-cbt-based, median *g* = 0.46, 95% *CI* [0.25, 0.68] with *k* = 272 included samples.
+
+* cbt-based, median *g* = 0.43, 95% *CI* [0.17, 0.68] with *k* = 1402 included samples.
+
+* combined, median *g* = 0.43, 95% *CI* [0.19, 0.66] with *k* = 1900 included samples.
+
+<br>
+
+*Technology of Delivery.* We found similar summary effect sizes for the different utilized technologies for the intervention. On average, meta-analyses investigating `r str_to_lower(slice_max(table_wf_1, table_wf_1$"Median")[1])` interventions, median *g* = `r as.numeric(slice_max(table_wf_1, table_wf_1$"Median")[2])`, 95% *CI* [`r as.numeric(slice_max(table_wf_1, table_wf_1$"Median")[3])`, `r as.numeric(slice_max(table_wf_1, table_wf_1$"Median")[4])`] with *k* = `r as.numeric(slice_max(table_wf_1, table_wf_1$"Median")[5])` included meta-analyses, produced slightly larger effect size estimates than meta-analyses investigating `r str_to_lower(slice_min(table_wf_1, table_wf_1$"Median")[1])`-based interventions, median *g* = `r as.numeric(slice_min(table_wf_1, table_wf_1$"Median")[2])`, 95% *CI* [`r as.numeric(slice_min(table_wf_1, table_wf_1$"Median")[3])`, `r as.numeric(slice_min(table_wf_1, table_wf_1$"Median")[4])`] with *k* = `r as.numeric(slice_min(table_wf_1, table_wf_1$"Median")[5])`. See Figure S4 for differences in summary effect sizes grouped by the technology of the intervention and Figure S5 for a descriptive specification curve plot focusing on smartphone based interventions.
+
+##### All Categories
+
+```{r echo = FALSE}
+groups <- unique(table_wf_1$Technology)
+
+for (group in groups) {
+  group_data <- filter(table_wf_1, Technology == group)
+  median_g <- round(as.numeric(slice_max(group_data, group_data$Median)[2]), 2)
+  ci_lower <- round(as.numeric(slice_max(group_data, group_data$Median)[3]), 2)
+  ci_upper <- round(as.numeric(slice_max(group_data, group_data$Median)[4]), 2)
+  k_value <- round(as.numeric(slice_max(group_data, group_data$Median)[5]), 2)
+  cat(paste0("* ",  str_to_lower(group), ", median *g* = ", median_g,
+             ", 95% *CI* [", ci_lower, ", ", ci_upper, 
+             "] with *k* = ", k_value, " included samples.\n\n"))
+}
+```
+
+* mobile, median *g* = 0.47, 95% *CI* [0.12, 0.81] with *k* = 58 included samples.
+
+* website, median *g* = 0.44, 95% *CI* [0.2, 0.68] with *k* = 1591 included samples.
+
+* combined, median *g* = 0.42, 95% *CI* [0.18, 0.65] with *k* = 1925 included samples.
+
+<br>
+
+*Guidance.* Summary effect sizes differed depending on the type of guidance utilized in the intervention. Meta-analyses that only included `r str_to_lower(slice_max(table_wf_2, table_wf_2$"Median")[1])` interventions, median *g* = `r as.numeric(slice_max(table_wf_2, table_wf_2$"Median")[2])`, 95% *CI* [`r as.numeric(slice_max(table_wf_2, table_wf_2$"Median")[3])`, `r as.numeric(slice_max(table_wf_2, table_wf_2$"Median")[4])`] with *k* = `r as.numeric(slice_max(table_wf_2, table_wf_2$"Median")[5])`, produced larger effect size estimates than meta-analyses including only `r str_to_lower(slice_min(table_wf_2, table_wf_2$"Median")[1])` interventions, median *g* = `r as.numeric(slice_min(table_wf_2, table_wf_2$"Median")[2])`, 95% *CI* [`r as.numeric(slice_min(table_wf_2, table_wf_2$"Median")[3])`, `r as.numeric(slice_min(table_wf_2, table_wf_2$"Median")[4])`] with *k* = `r as.numeric(slice_min(table_wf_2, table_wf_2$"Median")[5])`. See Figure S6 for differences in summary effect sizes grouped by the type of guidance and Figure S7 for a descriptive specification curve plot focusing on unguided interventions.
+
+```{r echo = FALSE}
+groups <- unique(table_wf_2$Support)
+
+for (group in groups) {
+  group_data <- filter(table_wf_2, Support == group)
+  median_g <- round(as.numeric(slice_max(group_data, group_data$Median)[2]), 2)
+  ci_lower <- round(as.numeric(slice_max(group_data, group_data$Median)[3]), 2)
+  ci_upper <- round(as.numeric(slice_max(group_data, group_data$Median)[4]), 2)
+  k_value <- round(as.numeric(slice_max(group_data, group_data$Median)[5]), 2)
+  cat(paste0("* ",  str_to_lower(group), ", median *g* = ", median_g,
+             ", 95% *CI* [", ci_lower, ", ", ci_upper, 
+             "] with *k* = ", k_value, " included samples.\n\n"))
+}
+```
+
+* guided, median *g* = 0.51, 95% *CI* [0.26, 0.75] with *k* = 1111 included samples.
+
+* combined, median *g* = 0.4, 95% *CI* [0.17, 0.62] with *k* = 2109 included samples.
+
+* human encouragement, median *g* = 0.39, 95% *CI* [0.11, 0.65] with *k* = 54 included samples.
+
+* minimal to no support, median *g* = 0.37, 95% *CI* [0.1, 0.64] with *k* = 224 included samples.
+
+* automated encouragement, median *g* = 0.32, 95% *CI* [-0.03, 0.66] with *k* = 76 included samples.
+
+<br>
+
+#### Comparison
+
+*Control Group.* Summary effect sizes differed depending on the type of control group utilized in the meta-analyses. Meta-analyses that compared interventions with a `r str_to_lower(slice_max(table_wf_5, table_wf_5$"Median")[1])`, median *g* = `r as.numeric(slice_max(table_wf_5, table_wf_5$"Median")[2])`, 95% *CI* [`r as.numeric(slice_max(table_wf_5, table_wf_5$"Median")[3])`, `r as.numeric(slice_max(table_wf_5, table_wf_5$"Median")[4])`] with *k* = `r as.numeric(slice_max(table_wf_5, table_wf_5$"Median")[5])` included samples, produced larger effect size estimates than meta-analyses that compared interventions with `r str_to_lower(slice_min(table_wf_5, table_wf_5$"Median")[1])` control groups, median *g* = `r as.numeric(slice_min(table_wf_5, table_wf_5$"Median")[2])`, 95% *CI* [`r as.numeric(slice_min(table_wf_5, table_wf_5$"Median")[3])`, `r as.numeric(slice_min(table_wf_5, table_wf_5$"Median")[4])`] with *k* = `r as.numeric(slice_min(table_wf_5, table_wf_5$"Median")[5])` included samples. See Figure S8 for differences in summary effect sizes grouped by the type of control group and Figure S9 for a descriptive specification curve plot focusing on care-as-usual control groups.
+
+##### All Categories
+```{r echo = FALSE}
+groups <- unique(table_wf_5$Control)
+
+for (group in groups) {
+  group_data <- filter(table_wf_5, Control == group)
+  median_g <- round(as.numeric(slice_max(group_data, group_data$Median)[2]), 2)
+  ci_lower <- round(as.numeric(slice_max(group_data, group_data$Median)[3]), 2)
+  ci_upper <- round(as.numeric(slice_max(group_data, group_data$Median)[4]), 2)
+  k_value <- round(as.numeric(slice_max(group_data, group_data$Median)[5]), 2)
+  cat(paste0("* ",  str_to_lower(group), ", median *g* = ", median_g,
+             ", 95% *CI* [", ci_lower, ", ", ci_upper, 
+             "] with *k* = ", k_value, " included samples.\n\n"))
+}
+```
+
+* wlc, median *g* = 0.64, 95% *CI* [0.35, 0.92] with *k* = 870 included samples.
+
+* combined, median *g* = 0.39, 95% *CI* [0.15, 0.62] with *k* = 2111 included samples.
+
+* other, median *g* = 0.32, 95% *CI* [0.11, 0.52] with *k* = 232 included samples.
+
+* cau, median *g* = 0.25, 95% *CI* [0.08, 0.43] with *k* = 361 included samples.
+
+<br>
+
+#### Outcomes
+
+*Diagnosis Criterion*. Summary effect sizes differed depending on the type of diagnosis utilized as an inclusion criterion in the meta-analyses. Meta-analyses that investigated `r str_to_lower(slice_max(table_wf_6, table_wf_6$"Median")[1])`, median *g* = `r as.numeric(slice_max(table_wf_6, table_wf_6$"Median")[2])`, 95% *CI* [`r as.numeric(slice_max(table_wf_6, table_wf_6$"Median")[3])`, `r as.numeric(slice_max(table_wf_6, table_wf_6$"Median")[4])`] with *k* = `r as.numeric(slice_max(table_wf_6, table_wf_6$"Median")[5])` included samples, produced larger effect size estimates than meta-analyses that investigating diagnoses based on `r str_to_lower(slice_min(table_wf_6, table_wf_6$"Median")[1])` scores, median *g* = `r as.numeric(slice_min(table_wf_6, table_wf_6$"Median")[2])`, 95% *CI* [`r as.numeric(slice_min(table_wf_6, table_wf_6$"Median")[3])`, `r as.numeric(slice_min(table_wf_6, table_wf_6$"Median")[4])`] with *k* = `r as.numeric(slice_min(table_wf_6, table_wf_6$"Median")[5])` included samples. See Figure S10 for differences in summary effect sizes grouped by the type of diagnosis and Figure S11 for a descriptive specification curve plot focusing on MDD.
+
+##### All Categories
+```{r echo = FALSE}
+groups <- unique(table_wf_6$Diagnosis)
+
+for (group in groups) {
+  group_data <- filter(table_wf_6, Diagnosis == group)
+  median_g <- round(as.numeric(slice_max(group_data, group_data$Median)[2]), 2)
+  ci_lower <- round(as.numeric(slice_max(group_data, group_data$Median)[3]), 2)
+  ci_upper <- round(as.numeric(slice_max(group_data, group_data$Median)[4]), 2)
+  k_value <- round(as.numeric(slice_max(group_data, group_data$Median)[5]), 2)
+  cat(paste0("* ",  str_to_lower(group), ", median *g* = ", median_g,
+             ", 95% *CI* [", ci_lower, ", ", ci_upper, 
+             "] with *k* = ", k_value, " included samples.\n\n"))
+}
+```
+
+* mdd, median *g* = 0.61, 95% *CI* [0.25, 0.96] with *k* = 438 included samples.
+
+* mood, median *g* = 0.55, 95% *CI* [0.1, 1] with *k* = 67 included samples.
+
+* combined, median *g* = 0.41, 95% *CI* [0.19, 0.62] with *k* = 1955 included samples.
+
+* cut-off, median *g* = 0.39, 95% *CI* [0.17, 0.61] with *k* = 1114 included samples.
+
+<br>
+
+#### Study Design
+
+*Time Point.* The choice in including only effect sizes measured directly post intervention or including only follow-up measurements (> 24 weeks), did yield different effect size estimates. Meta-analyses that included samples from
+`r str_to_lower(slice_max(table_wf_8, table_wf_8$"Median")[1])` intervention, median *g* = `r as.numeric(slice_max(table_wf_8, table_wf_8$"Median")[2])`, 95% *CI* [`r as.numeric(slice_max(table_wf_8, table_wf_8$"Median")[3])`, `r as.numeric(slice_max(table_wf_8, table_wf_8$"Median")[4])`] with *k* = `r as.numeric(slice_max(table_wf_8, table_wf_8$"Median")[5])` had larger effect sizes than meta-analyses including studies from the `r str_to_lower(slice_min(table_wf_8, table_wf_8$"Median")[1])`, median *g* = `r as.numeric(slice_min(table_wf_8, table_wf_8$"Median")[2])`, 95% *CI* [`r as.numeric(slice_min(table_wf_8, table_wf_8$"Median")[3])`, `r as.numeric(slice_min(table_wf_8, table_wf_8$"Median")[4])`] with *k* = `r as.numeric(slice_min(table_wf_8, table_wf_8$"Median")[5])`. See Figure S12 for differences in summary effect sizes grouped by the strategy of dealing with risk of bias and Figure S13 for a descriptive specification curve plot focusing only on follow-up meta-analyses.
+
+
+
+##### All Categories
+```{r echo = FALSE}
+groups <- unique(table_wf_8$Timepoint)
+
+for (group in groups) {
+  group_data <- filter(table_wf_8, Timepoint == group)
+  median_g <- round(as.numeric(slice_max(group_data, group_data$Median)[2]), 2)
+  ci_lower <- round(as.numeric(slice_max(group_data, group_data$Median)[3]), 2)
+  ci_upper <- round(as.numeric(slice_max(group_data, group_data$Median)[4]), 2)
+  k_value <- round(as.numeric(slice_max(group_data, group_data$Median)[5]), 2)
+  cat(paste0("* ",  str_to_lower(group), ", median *g* = ", median_g,
+             ", 95% *CI* [", ci_lower, ", ", ci_upper, 
+             "] with *k* = ", k_value, " included samples.\n\n"))
+}
+```
+
+* post, median *g* = 0.46, 95% *CI* [0.21, 0.7] with *k* = 3027 included samples.
+
+* follow-up, median *g* = 0.27, 95% *CI* [0.04, 0.49] with *k* = 547 included samples.
+
+
+<br>
+
+*Strategies in Dealing with the Risk of Bias of Primary Studies.* The choice in dealing with risk of bias by either excluding high risk of bias studies, only including low risk of bias studies, or including all studies, did not result in different effect size estimates. Meta-analyses that included samples rated as `r str_to_lower(slice_max(table_wf_7, table_wf_7$"Median")[1])` risk of bias, median *g* = `r as.numeric(slice_max(table_wf_7, table_wf_7$"Median")[2])`, 95% *CI* [`r as.numeric(slice_max(table_wf_7, table_wf_7$"Median")[3])`, `r as.numeric(slice_max(table_wf_7, table_wf_7$"Median")[4])`] with *k* = `r as.numeric(slice_max(table_wf_7, table_wf_7$"Median")[5])` had larger effect sizes than meta-analyses including studies rated as `r str_to_lower(slice_min(table_wf_7, table_wf_7$"Median")[1])`, median *g* = `r as.numeric(slice_min(table_wf_7, table_wf_7$"Median")[2])`, 95% *CI* [`r as.numeric(slice_min(table_wf_7, table_wf_7$"Median")[3])`, `r as.numeric(slice_min(table_wf_7, table_wf_7$"Median")[4])`] with *k* = `r as.numeric(slice_min(table_wf_7, table_wf_7$"Median")[5])`. See Figure S14 for differences in summary effect sizes grouped by the strategy of dealing with risk of bias and Figure S15 for a descriptive specification curve plot focusing on including only low risk of bias studies.
+
+##### All Categories
+```{r echo = FALSE}
+groups <- unique(table_wf_7$ROB)
+
+for (group in groups) {
+  group_data <- filter(table_wf_7, ROB == group)
+  median_g <- round(as.numeric(slice_max(group_data, group_data$Median)[2]), 2)
+  ci_lower <- round(as.numeric(slice_max(group_data, group_data$Median)[3]), 2)
+  ci_upper <- round(as.numeric(slice_max(group_data, group_data$Median)[4]), 2)
+  k_value <- round(as.numeric(slice_max(group_data, group_data$Median)[5]), 2)
+  cat(paste0("* ",  str_to_lower(group), ", median *g* = ", median_g,
+             ", 95% *CI* [", ci_lower, ", ", ci_upper, 
+             "] with *k* = ", k_value, " included samples.\n\n"))
+}
+```
+
+* include all studies, median *g* = 0.45, 95% *CI* [0.2, 0.7] with *k* = 2138 included samples.
+
+* exclude worst studies, median *g* = 0.39, 95% *CI* [0.18, 0.61] with *k* = 1381 included samples.
+
+* include best studies, median *g* = 0.39, 95% *CI* [0.09, 0.7] with *k* = 55 included samples.
+
+<br>
+
+*Meta-Analytical Method* Most meta-analytical methods yielded very similar effect size estimates, except PET-PEESE. Meta-analyses that were analyzed with `r str_to_lower(slice_max(table_hf_1, table_hf_1$"Median")[[1]][1])`, median *g* = `r slice_max(table_hf_1, table_hf_1$"Median") %>% pull(Median)`, 95% *CI* [`r slice_max(table_hf_1, table_hf_1$"Median") %>% pull(LB)`, `r slice_max(table_hf_1, table_hf_1$"Median") %>% pull(UB)`] with *k* = `r slice_max(table_hf_1, table_hf_1$"Median") %>% pull(N)`, produced larger effect size estimates than meta-analyses analyzed with `r table_hf_1 %>% filter(Method == "Pet-peese") %>% pull(Method)`, median *g* = `r as.numeric(table_hf_1 %>% filter(Method == "Pet-peese") %>% pull(Mean))`, 95% *CI* [`r as.numeric(table_hf_1 %>% filter(Method == "Pet-peese") %>% pull(LB))`, `r as.numeric(table_hf_1 %>% filter(Method == "Pet-peese") %>% pull(UB))`] with *k* = `r as.numeric(table_hf_1 %>% filter(Method == "Pet-peese") %>% pull(N))`. See Figure S16 for differences in summary effect sizes grouped by the method and Figure S17 for a descriptive specification curve highlighting meta-analyses that were analyzed using the WAAP method.
+
+
+The different methods did not produce diverging results when investigating the Janus Effect, as none out of eight methods suggested a switch in effect size direction between the 10th and 90th percentile (Table 2).
+
+\newpage
+
+```{r echo = F}
+get_janus <- function(data, type, var) {
+  
+  data_filtered <- switch(type,
+                          "Excluded" = data %>% filter(ma_method != var),
+                          "Only Method" = data %>% filter(ma_method == var))
+  
+  data_janus <- data.frame(Method = var, 
+                           Type = type) %>%
+    mutate(`10th` = quantile(data_filtered$mean, 0.1),
+           `90th` = quantile(data_filtered$mean, 0.9),
+           `Median` = quantile(data_filtered$mean, 0.5),
+           `Mean` = mean(data_filtered$mean),
+           k = nrow(data_filtered)
+    )
+  
+  return(data_janus)
+}
+
+combine_results <- function(data, ma_methods) {
+  all_results <- list()
+  
+  for (var in ma_methods) {
+    for (type in c("Only Method", "Excluded")) {
+      all_results[[paste(var, type)]] <- get_janus(data, type, var)
+    }
+  }
+  
+  final_df <- bind_rows(all_results)
+  return(final_df)
+}
+
+create_all_janus_results <- function(specs, zero = "yes") {
+  
+  # Check if 'ma_method' and 'mean' exist in specs dataframe
+  if (!all(c('ma_method', 'mean') %in% names(specs))) {
+    stop("'ma_method' and 'mean' columns must exist in specs dataframe.")
+  }
+  
+  # Extract unique ma_method values
+  ma_methods_list <- unique(specs$ma_method)
+  
+  if (zero == "yes") {
+    specs <- specs %>% 
+      mutate(mean = case_when(
+        ma_method == "pet-peese" & mean < 0 ~ 0,
+        TRUE ~ mean
+      ))
+  }
+  
+  # Assuming combine_results returns a dataframe
+  janus_result <- combine_results(specs, ma_methods_list)
+  
+  # Create a new dataframe for overall statistics
+  data_janus_overall <- data.frame(Method = "All", 
+                                   Type = "All") %>%
+    mutate(`10th` = quantile(specs$mean, 0.1),
+           `90th` = quantile(specs$mean, 0.9),
+           `Median` = quantile(specs$mean, 0.5),
+           `Mean` = mean(specs$mean),
+           k = nrow(specs))
+  
+  # Combine the results
+  final_result <- janus_result %>% bind_rows(data_janus_overall)
+  
+  return(final_result)
+}
+
+
+specs_list <- list(specifications_k2, specifications_k5, specifications_k10, specifications_k25, specifications_k50)
+names_list <- c("specifications_k2", "specifications_k5", "specifications_k10", "specifications_k25", "specifications_k50")
+
+for (i in 1:length(specs_list)) {
+  result_name <- paste0("janus_result_", names_list[i])
+  assign(result_name, create_all_janus_results(specs_list[[i]], zero = "yes"))
+}
+
+janus_result_specifications_k10 %>% 
+  mutate(Method = str_to_upper(Method)) %>% 
+  flextable()  %>% 
+  autofit() %>% 
+  add_header_lines("**Table 2: Janus Effect and Effect Size Information for Meta-Analyses with at Least 10 Primary Studies**") %>% 
+  add_footer_lines("Notes. REML: Restricted Maximum Likelihood; FE: Fixed/Equal Effect Model; P-UNIFORM: P-Uniform Method; PET-PEESE: Precision Effect Test and Precision Effect Estimate with Standard Error; UWLS: Unweighted Least Squares; WAAP: Weighted Average Absolute Prediction; 3-LEVEL: Three-level Meta-analysis; RVE: Robust Variance Estimation. Type: Only Method contains all meta-analyses based on that specific method while Excluded contains all other methods except that specific method.")
+```
+\newpage
+
+```{r echo=FALSE}
+#janus_result_specifications_k2  %>% 
+#  mutate(Method = str_to_upper(Method)) %>% 
+#  flextable()  %>% 
+#  add_header_lines("Table: Janus Effect and Effect Size Information for Meta-Analyses with at Least 2 Primary Studies") %>% 
+#  add_footer_lines("Notes. REML: Restricted Maximum Likelihood; FE: Fixed/Equal Effect Model; P-UNIFORM: P-Uniform Method; PET-PEESE: Precision #Effect Test and Precision Effect Estimate with Standard Error; UWLS: Unweighted Least Squares; WAAP: Weighted Average Absolute Prediction; 3-LEVEL: #Three-level Meta-analysis; RVE: Robust Variance Estimation. Type: Only Method contains all meta-analyses based on that specific method while #Excluded contains all other methods except that specific method.")
+#
+#janus_result_specifications_k5 %>% 
+#  mutate(Method = str_to_upper(Method)) %>% 
+#  flextable()  %>% 
+#  add_header_lines("Table: Janus Effect and Effect Size Information for Meta-Analyses with at Least 5 Primary Studies") %>% 
+#  add_footer_lines("Notes. REML: Restricted Maximum Likelihood; FE: Fixed/Equal Effect Model; P-UNIFORM: P-Uniform Method; PET-PEESE: Precision #Effect Test and Precision Effect Estimate with Standard Error; UWLS: Unweighted Least Squares; WAAP: Weighted Average Absolute Prediction; 3-LEVEL: #Three-level Meta-analysis; RVE: Robust Variance Estimation. Type: Only Method contains all meta-analyses based on that specific method while #Excluded contains all other methods except that specific method.")
+#
+#janus_result_specifications_k25 %>% 
+#  mutate(Method = str_to_upper(Method)) %>% 
+#  flextable()  %>% 
+#  add_header_lines("Table: Janus Effect and Effect Size Information for Meta-Analyses with at Least 25 Primary Studies") %>% 
+#  add_footer_lines("Notes. REML: Restricted Maximum Likelihood; FE: Fixed/Equal Effect Model; P-UNIFORM: P-Uniform Method; PET-PEESE: Precision #Effect Test and Precision Effect Estimate with Standard Error; UWLS: Unweighted Least Squares; WAAP: Weighted Average Absolute Prediction; 3-LEVEL: #Three-level Meta-analysis; RVE: Robust Variance Estimation. Type: Only Method contains all meta-analyses based on that specific method while #Excluded contains all other methods except that specific method.")
+#
+#janus_result_specifications_k50  %>% 
+#  mutate(Method = str_to_upper(Method)) %>% 
+#  flextable()  %>% 
+#  add_header_lines("Table: Janus Effect and Effect Size Information for Meta-Analyses with at Least 50 Primary Studies") %>% 
+#  add_footer_lines("Notes. REML: Restricted Maximum Likelihood; FE: Fixed/Equal Effect Model; P-UNIFORM: P-Uniform Method; PET-PEESE: Precision #Effect Test and Precision Effect Estimate with Standard Error; UWLS: Unweighted Least Squares; WAAP: Weighted Average Absolute Prediction; 3-LEVEL: #Three-level Meta-analysis; RVE: Robust Variance Estimation. Type: Only Method contains all meta-analyses based on that specific method while #Excluded contains all other methods except that specific method.")
+```
+
+
+
+# Discussion
+
+## Main Findings
+```{r echo = FALSE, results = FALSE}
+sig_ma <- specifications %>% 
+  filter(p < .05 & mean > 0) %>% nrow()
+
+sig_ma_percent = round(sig_ma/nrow(specifications) *100, 1)
+
+non_sig_ma <- specifications %>% 
+  filter(p >= .05 | (p < .05 & mean < 0)) %>% nrow()
+
+non_sig_ma_percent = round(non_sig_ma/nrow(specifications)*100,1)
+
+# Meta-analyses including all rcts
+specifications %>% summarize(max = max(k)) %>% pull(max) -> max_k
+specifications %>% 
+  filter(k == max_k) %>% slice(1) %>% pull(set) -> max_set
+
+ma_all_sets <- specifications %>% 
+  filter(set == max_set) 
+#ma_all_sets 
+#
+## RVE
+### smallest ma 
+#specifications %>% filter(ma_method == "rve" & wf_8 == "post") %>%  arrange(mean)  %>% slice(1)
+#
+### largest ma
+#specifications %>% filter(ma_method == "rve") %>%  arrange(desc(mean))   %>% slice(1)
+#
+## Overall
+#
+### smallest ma
+#specifications %>%  arrange(mean) %>% slice(1)
+#
+### largest ma
+#specifications %>%  arrange(desc(mean))  %>% slice(1)
+#
+#
+## smallest ma, that is not pet-peese
+#specifications %>% filter(ma_method != "pet-peese") %>%  arrange(mean)  %>% slice(1)
+#
+## largest ma
+#
+#specifications %>%  arrange(desc(mean))  %>% slice(1)
+#
+
+# ### Overview
+# 1. Is there robust meta-analytic evidence for the efficacy of digital interventions for depression? 
+# 
+# Data (`r k_studies` RCTs , `r k_es` effect sizes, `r k_ma` meta-analyses meta-analyses) suggests it is robust:
+# 
+# - Effect size distribution: mean Hedges' *g* = `r mean(specifications$mean)`. 
+# - Interquartile range of `r iqr[1]` to `r iqr[2]`.   
+# - Greater than 0 `r round(percentage_mean_over_zero, 0)`%   
+# - 95% *CIs* that did not include 0 `r round(percentage_ci_over_zero,0)`%   
+# - Reached a clinically relevant effect size of Hedges' *g* \> 0.24: `r round(percentage_mean_over_clinically_relevance, 0)`%. 
+# - `r round(percentage_ci_over_clinically_relevance,0)`% of the summary effect sizes had 95% *CIs* larger than a this clinically relevant effect size.  
+# - `r ma_sig/k_ma*100`% meta-analyses statistically significant. 
+# - There was no Janus effect, meaning there was no change in effect size direction between the 10th and 90th percentile.  
+# 
+# 
+# 
+# 2. Why and when do meta-analyses differ?
+# 
+# Higher summary effects associated with:
+# 
+# 1. Population: In Adults
+# 2. Intervention: Guided interventions and Mobile Interventions
+# 3. Control: Comparison with waitlist control groups
+# 4. Outcome: Mood and MDD disorder
+# 5. Study design: Inclusion of high risk of bias studies
+# 
+# 
+# 
+# Lower summary effects associated with:
+# 
+# 1. Population: Other groups such as x, y, z.  
+# 2. Intervention: Minimal to no support or Human encouragement. 
+# 3. Control: Comparison with CAU. 
+# 4. Outcomes: Inclusion based on exceeding cutoff on self-reported instrument.  
+# 5. Study design: Excluding high riks of bias studies, including only low risk of bias studies; comparison at follow up > 24 weeks and Methods: PET-PEESE and WAAP.  
+# 
+# 
+```
+
+
+Our extensive multiverse meta-analysis, encompassing `r k_ma` meta-analyses based on `r k_studies` RCTs and `r k_es` effect sizes, provides evidence supporting the efficacy of digital interventions for depression. This is supported by positive effect sizes at both the 10th (Hedges’ *g* = `r tenth_percentile`) and 90th percentiles (Hedges’ *g* = `r ninetieth_percentile`), and a median effect size of Hedges’ *g* = `r median(specifications$mean)`. Furthermore, a substantial majority (`r round(percentage_mean_over_zero, 0)`%) of the effect sizes were greater than 0, and substantial portion of `r round(percentage_mean_over_clinically_relevance, 0)`% reached a clinically relevant effect size of Hedges’ *g* > 0.24, indicating a robust and relevant effect across various analytical decisions. The analyses also revealed a majority of the meta-analyses (`r sig_ma_percent`%) showing a statistically significant difference in favor of digital interventions, while none showed a statistically significant difference in favor of the control condition. 
+
+However, the results also show variations based on several factors including the type of guidance provided, the technology used, the populations targeted, and the control conditions employed. Human guided interventions, comparison with waitlist control groups, and mobile-based interventions, for example, were associated with larger effect sizes, whereas care as usual as a control condition, longer follow-up durations, including only low risk of bias studies, and certain populations were linked with smaller effect sizes. The investigation of the Vibrations of Effects further emphasizes the consistency of these findings across different numbers of trials, reducing concerns about the robustness of the digital interventions' effectiveness. In summary, this comprehensive analysis underscores the positive impact of digital interventions for depression, while also showcasing the factors associated with their efficacy as reported by all possible meta-analyses.
+
+### Research in Context
+
+To situate our findings within the broader research landscape, previous meta-analyses reported variations in effect sizes for digital interventions for depression and have ranged from 0.22 to 1.01 across different meta-analyses (Chan et al.,2021; Cuijpers et al., 2019; Firth et al., 2017; Han et al., 2022; Josephine et al., 2017; Karyotaki et al., 2017; Köhnen et al., 2021; Pang et al., 2021; Serrano-Ripoll et al., 2022; Sierra et al., 2018; Xiong et al., 2023). Our results, with a median effect size of `r median(specifications$mean)` and an interquartile range between `r iqr[1]` to `r iqr[2]`, position themselves within this spectrum, demonstrating consistency with previous findings while also contributing to the ongoing dialogue regarding the efficacy of these interventions. The pronounced variation in effect sizes observed in previous research, referred to as the “vibration of effects,” is critically addressed in our analysis. We scrutinize what this vibration entails, assessing how different methodological paths and choices might contribute to these variances in reported outcomes. Our findings indicate a general stability in the direction of effect sizes, with a notable absence of the Janus effect, thus providing a more consolidated and reliable understanding of the impact of digital interventions on depression.
+
+Overall, we found results that are consistent with patterns reported in other reviews of digital interventions for depression, but our effects were a bit smaller. For instance, the most recent meta-analysis on digital interventions for depression by Moshe et al. (2021) reported modest effect sizes (Hedges' *g* = 0.52), larger effect sizes for human guided interventions than in self-help interventions, larger effects when interventions were compared with wait list control groups, when compared with TAU slightly lower. 
+
+Our analysis has also enabled the performance of additional, previously unexplored meta-analyses, broadening the scope of our understanding of digital interventions in varying demographic groups and populations. For instance, we have identified patterns across different demographics, including that meta-analyses investigating adult populations tend to produce higher summary effects than those in medical groups, other groups, and younger populations——yet these smaller effects remain still clinically meaningful. This comprehensive approach allows us to confidently extend our conclusions to diverse groups, offering a more inclusive and representative interpretation of the available data.
+
+The significance of our work lies not only in its contribution to the existing body of knowledge but also in its role in paving the way for future research and innovation in the field. By providing a robust and comprehensive analysis showcasing that overall, there is a robust modest effect for the efficacy of digital interventions for depression, we establish a firm ground for further exploration and inquiry, highlighting areas that necessitate more attention and investigation.
+In particular, we acknowledge the necessity for future research to delve deeper into understanding the particular ingredients of effective digital interventions, specifically focusing on understanding the 'how' and 'for whom' aspects of these interventions. By doing so, we can further refine our understanding, enhance the effectiveness of digital interventions, and ensure that they are accessible and beneficial to all sections of the population.
+
+## Strengths, limitations, and future directions 
+
+```{r echo = F}
+k_hr <- data_multiverse %>% group_by(study) %>% slice(1) %>% filter(wf_7 == "high risk") %>% nrow 
+k_hr_percent <- k_hr/k_studies * 100 
+k_lr <- data_multiverse %>% group_by(study) %>% slice(1)  %>% filter(wf_7 == "low risk") %>% nrow
+k_lr_percent <- k_lr/k_studies * 100 
+k_sc <- data_multiverse %>% group_by(study) %>% slice(1) %>% filter(wf_7 == "some concerns") %>% nrow
+k_sc_percent <- k_sc/k_studies * 100 
+```
+
+Our study has certain limitations. For one, the study quality of the original sample of `r k_studies` studies, rated with the risk of bias assessment tool (ROB2), was generally poor. Of all primary studies, `r k_hr_percent`% were rated as high risk and only `r k_lr_percent`% as low risk. Therefore, only few meta-analyses could exclusively include low risk of bias studies. However, in those rare meta-analyses, only slightly lower effect size estimates were found than in meta-analyses including studies of poorer quality, indicating that the differences in study quality did not bias the meta-analytical findings.
+
+```{r echo = F}
+k_neg_es <- data_multiverse %>% filter(yi < 0) %>% nrow()
+k_neg_es_percent <- k_neg_es/k_es *100
+
+k_pos_es <- data_multiverse %>% filter(yi >= 0) %>% nrow()
+k_pos_es_percent <- k_pos_es/k_es *100
+
+k_neg_spec <- specifications %>% filter(mean < 0) %>% nrow
+k_neg_spec_percent <- k_neg_spec/nrow(specifications) *100
+
+# Pre-filter and arrange specifications
+filtered_specs <- specifications %>% filter(mean < 0) %>% arrange(mean)
+
+# Initialize an empty dataframe
+df_pp <- data.frame(k = numeric(0), 
+                    set = character(0))
+
+for (i in 1:nrow(filtered_specs)) {
+  
+  set_neg <- filtered_specs %>% 
+    slice(i) %>%
+    pull(set) %>%
+    str_extract_all("\\d+") %>%
+    unlist() %>%
+    as.numeric()
+  
+  # Aggregate data
+  dat_check_neg <- data_multiverse %>% 
+    filter(es_id %in% set_neg) %>% 
+    escalc(yi = yi, vi = vi, data = .)
+  
+  k_neg_studies_in_ma <- dat_check_neg %>% 
+    aggregate(cluster = study, struct = "CS", rho = 0.5) %>% 
+    filter(yi < 0) %>% 
+    nrow()
+  
+  # Add the results to the dataframe
+  df_pp <- rbind(df_pp, data.frame(k = k_neg_studies_in_ma, set = paste(set_neg, collapse = ", ")))
+}
+
+k_ma_neg_no_neg_ps <- df_pp %>% filter(k==0) %>% nrow
+k_ma_neg_1_neg_ps <- df_pp %>% filter(k==1) %>% nrow
+```
+
+Secondly, one common limitation of one of our methods to correct for small study effects, PET-PEESE, is its tendency to over correct for biases, as highlighted by Carter et al. (2019). In our study, this issue is highly likely: while many observed effect sizes are positive (`r k_pos_es_percent`%), the corrected summary effect sizes of meta-analyses can be substantially negative, even in meta-analyses where only positive effect sizes (`r k_ma_neg_no_neg_ps` meta-analyses analyzed with PET-PEESE) or only one negative effect size (`r k_ma_neg_1_neg_ps` such meta-analyses) is present. To address this, we followed the recommendation to adjust these estimates to zero as these meta-analyses indicate that there is no significant effect. The results were overall very similar, indicating that this did not substantially distort our analyses.
+
+Third, similar to conventional meta-analyses, one of the inherent challenges of conducting multiverse meta-analyses is the myriad of analytical decisions that must be made, each with the capability to impact the final outcomes. Although multiverse meta-analyses suceed in providing an extensive birds eye view of a research field, much more so than conventional meta-analyses, the selection and specifications of *Which* and *How* factors are still subject to the individual researcher’s decision. For example, had we opted for different methodologies, the results might have displayed distinct patterns, particularly in areas such as the descriptive specification curve and the VoE plot. A prime example of this variability can be observed when considering the use of diverse bias assessment tools or altering the length of follow-up durations, both of which can steer results in different directions. Multiverse meta-analyses, by design, seek to encapsulate a range of analytical scenarios to provide a holistic view of the research. Yet, this multiplicity can introduce a degree of variability that might cloud the precision and clarity of the findings. A potential avenue to mitigate this limitation and ensure more consistent results in future multiverse meta-analyses would be to integrate both systematic and umbrella reviews into the analytical framework (Bahri et al., 2022).
+
+```{r echo = F}
+# List of methods
+methods <- c("reml", "rve", "3-lvl", "fe", "uwls", "waap", "pet-peese", "pet-peese (corrected)")
+# Function to get min and max rows for a given method
+get_min_max_rows <- function(method) {
+  min_row <- specifications %>%
+    arrange(mean) %>%
+    filter(ma_method == method & wf_8 == "post") %>%
+    slice(1)
+  
+  max_row <- specifications %>%
+    arrange(desc(mean)) %>%
+    filter(ma_method == method & wf_8 == "post") %>%
+    slice(1)
+  
+  bind_rows(min_row, max_row)
+}
+
+# Applying the function to each method and binding results
+result_df <- bind_rows(lapply(methods, get_min_max_rows))
+
+
+min_max_effecs_by_method <- result_df  %>%  mutate(divergence = rep( c("Lowest ES", "Highest ES"), 7)) %>% 
+  mutate(ci = paste(round(lb,2), round(ub,2), sep = ", ")) %>% 
+  select(wf_1:wf_8, ma_method, mean, ci, k) 
+
+example_large_es <- specifications %>%  filter(wf_3 == "adul" & wf_2 == "guided" & wf_5 == "wl" & wf_6 == "mdd" ) %>% arrange(desc(mean))  %>% select(-dependency, -X) %>% slice(1) %>% mutate(ci = paste(round(lb,2), round(ub,2), sep = ", "))
+
+example_small_es <- specifications_k2 %>%  filter( wf_2 == "minimal to no support" &  wf_6 == "cut"  & lb < 0 & ma_method == "pet-peese") %>% arrange(mean) %>% select(-dependency, -X) %>% mutate(ci = paste(round(lb,2), round(ub,2), sep = ", "))
+```
+
+
+Forth, we performed a series of regressions to understand the sources of VoE. Although such an analysis must be interpreted cautiously because it is prone to confounding, it may help to understand the discrepancies found in multiple overlapping meta-analyses in a given field (Bahri et al., 2022). Moreover, the VoE framework enables the a-posteriori inspection of some combinations of interest. Importantly, our quantification of the analytical decisions possibly associated with VoE is exploratory and must be interpreted with caution. A major limitation of our approach lies in the fact that we performed a regression on a wide range of meta-analyses, some of which are redundant (and are combinations of the same set of studies). Although point estimates are not expected to be biased, nonindependence between those metaanalyses prevents any easy computation of confidence intervals, which we did not report for this reason. Solutions to derive such confidence intervals (e.g., by weighting the results of the different studies or by analyzing only unique combinations of studies) require more development before they are implemented and adopted widely (Bahri et al., 2022).
+
+However, based on the identified decisions associated with systematically higher and lower effect sizes we were able to select distinct plausible combinations of different criteria, that would produce contradictory meta-analyses. For example, a very large summary effect can be obtained when conducting a meta-analysis focused on adults with MDD, comparing human guided interventions with wait list control groups, while keeping high risk of bias studies included (Hedges' *g* = `r example_large_es$mean`, 95% *CI* [`r example_large_es$ci`], *k* = `r example_large_es$k`). On the other end of the spectrum, non-significant meta-analyses can be obtained when we conduct a meta-analyses focused on minimal to no support guidance analyzed with PET-PEESE (Hedges' *g* = `r example_small_es$mean`, 95% *CI* [`r example_small_es$ci`], *k* = `r example_small_es$k`). 
+
+Psychotherapy research has extensively explored the potential influences of many of these factors on the resulting effect sizes in meta-analyses, such as in different population, type of intervention, different control groups (Michopoulous, et al. 2021), quality of trials (Cuijpers et al. 2010), publication bias (Driessen et al. 2015). Our multiverse meta-analysis extended this exploration. Instead of examining these factors in isolation, it encompasses all analyses across these factors simultaneously, representing a vast range of plausible results. Such a comprehensive approach aids in understanding how different analytical choices, when combined, interact and sometimes lead to diverging conclusions.
+
+Addressing the sometimes conflicting results generated by the recent surge in meta-analysis production, this study’s application of the multiverse meta-analysis approach is particularly helpful. The evident vibrations of effects from similar research questions emphasize the critical need for innovative methodologies capable of tackling the reproducibility challenges inherent in meta-analyses. Identifying the factors contributing to these vibrations has been a key outcome of our study. For instance, we found that when investigating self-guided or comparing treatment as usual control groups, the intervention was deemed less effective, aligning with findings from previous studies (Cuijpers et al., 2019; Pang et al., 2021). In contrast, guided interventions have consistently shown larger effect sizes over self-guided ones, as supported by multiple studies (Mamukashvili-Delau et al., 2022; Wells et al., 2018; Wright et al., 2019), while other studies found guided and self-guided interventions to be equivalent (Ahern et al., 2018; Sztein et al., 2017). Moreover, our analysis underscores the impact of follow-up timepoints and different approaches to handling risk of bias, further contributing to the complexity and inconsistency of findings across different meta-analyses. This nuanced understanding highlights the necessity for careful consideration and transparency in methodological choices to enhance the reliability and validity of meta-analytic findings in the field of digital interventions for depression.
+
+Consequently, clinicians, researchers, and policymakers should exercise caution and employ a rigorous, critical lens when interpreting and applying these findings (de Vriez, 2018). This vigilant approach ensures that decisions are rooted in a thorough understanding of the underlying data and its potential variations.
+
+The efficacy of these interventions is especially meaningful in light of the high prevalence of depression, and the associated burdens—both personal and economic (Johnston et al., 2019; Santomauro et al., 2021; World Health Organization [WHO], 2023). The increased accessibility and immediacy of digital interventions present an important avenue for support, especially given the existing shortages in available therapy programmes (Cuijpers & Riper, 2014; Patel et al., 2020; Rodriguez-Villa et al., 2020). This is particularly relevant for individuals who find themselves on lengthy waiting lists, as these digital tools can offer much-needed assistance in the interim. As we navigate the complexities of mental health care, the incorporation of digital interventions emerges as a vital component, contributing to a more accessible system, ready to meet the diverse needs of its users.
+
+In summary, our multiverse meta-analysis not only reaffirms the efficacy of digital interventions in treating depression but also enriches the discourse by providing a more nuanced, comprehensive, and inclusive understanding of their impact. Our work stands as a testament to the potential of digital interventions, serving as an important avenue for support and advancement in the field of mental health, while also setting the stage for future research endeavors aimed at optimizing and personalizing digital mental health care.
+
+\newpage
+
+# References
+
+## Intro
+American Psychiatric Association. (2019, February). APA CLINICAL PRACTICE GUIDELINE for the treatment of depression across three age cohorts. https://www.apa.org/depression-guideline
+Ahern, E., Kinsella, S., & Semkovska, M. (2018). Clinical efficacy and economic evaluation of online cognitive bbehaviouraltherapy for major depressive disorder: a systematic review and meta-analysis. Expert review of pharmacoeconomics & outcomes research, 18(1), 25–41. https://doi.org/10.1080/14737167.2018.1407245
+Carbonell, Á., Navarro-Pérez, J. J., & Mestre, M. V. (2020). Challenges and barriers in mental healthcare systems and their impact on the family: A systematic integrative review. Health & social care in the community, 28(5), 1366–1379. https://doi.org/10.1111/hsc.12968
+Chan, M., Jiang, Y., Lee, C. Y. C., Ramachandran, H. J., Teo, J. Y. C., Seah, C. W. A., Lin, Y., & Wang, W. (2022). Effectiveness of eHealth-based cognitive behavioural therapy on depression: A systematic review and meta-analysis. Journal of clinical nursing, 31(21-22), 3021–3031. https://doi.org/10.1111/jocn.16212
+Cuijpers, P., & Riper, H. (2014). Internet interventions for depressive disorders: an 
+overview. Revista de Psicopatología y Psicología Clínica, 19(3), 209-216.
+DOI: 10.5944/rppc.vol.19.num.3.2014.13902
+Cuijpers, P., Noma, H., Karyotaki, E., Cipriani, A., & Furukawa, T. A. Effectiveness and Acceptability of Cognitive Behavior Therapy Delivery Formats in Adults With Depression: A Network Meta-analysis. JAMA Psychiatry, 76(7), 700-707.
+DOI: 10.1001/jamapsychiatry.2019.0268 
+Cuijpers, P., Kleiboer, A., Karyotaki, E., & Riper, H. (2017). Internet and mobile     
+interventions for depression: Opportunities and challenges. Depression and anxiety,
+34(7), 596-602. DOI: 10.1002/da.22641
+Ebert, D. D., Cuijpers, P., Muñoz, R. F., & Baumeister, H. (2017). Prevention of Mental Health 
+Disorders Using Internet- and Mobile-Based Interventions: A Narrative Review and Recommendations for Future Research. Frontiers in psychiatry, 8, 116. https://doi.org/10.3389/fpsyt.2017.00116
+Evans-Lacko, S., & Knapp, M. (2016). Global patterns of workplace productivity for people with depression: absenteeism and presenteeism costs across eight diverse countries. Social Psychiatry and Psychiatric Epidemiology, 51(11), 1525-1537. https://doi.org/10.1007/s00127-016-1278-4 
+Firth, J., Torous, J., Nicholas, J., Carney, R., Pratap, A., Rosenbaum, S., & Sarris, J. The efficacy of smartphone-based mental health interventions for depressive symptoms: a meta-analysis of randomized controlled trials. World Psychiatry, 16(3), 287-298. https://doi.org/10.1002/wps.20472
+Fried, E. I., & Nesse, R. M. (2014). The Impact of Individual Depressive Symptoms on Impairment of Psychosocial Functioning. PLoS One, 9(2), e90311. https://doi.org/10.1371/journal.pone.0090311 
+Furukawa, T. A., Suganuma, A., Ostinelli, E. G., Andersson, G., Beevers, C. G., Shumake, J., Berger, T., Boele, F. W., Buntrock, C., Carlbring, P., Choi, I., Christensen, H., Mackinnon, A., Dahne, J., Huibers, M. J. H., Ebert, D. D., Farrer, L., For, , N. R., . . . Cuijpers, P. (2021). Dismantling, optimising, and personalising internet cognitive behavioural therapy for depression: a systematic review and component network meta-analysis using individual participant data. The Lancet Psychiatry, 8(6), 500-511. https://doi.org/10.1016/S2215-0366(21)00077-8
+Han, A., & Kim, T. H. (2022). Effects of internet-delivered behavioral activation on individuals with depressive symptoms: A systematic review and meta-analysis. J Psychiatr Res, 152, 104-118. https://doi.org/doi:10.1016/j.jpsychires.2022.05.031 
+Higinbotham, M. K., Emmert-Aronson, B., & Bunge, E. L. (2020). A meta-analysis of the effectiveness of behavioral intervention technologies and face-to-face cognitive behavioral therapy for youth with depression. Journal of Technology in Behavioral Science, 5(4), 324-335. https://doi.org/10.1007/s41347-020-00139-6
+Jain, S., Gupta, S., Li, V. W., Suthoff, E., & Arnaud, A. (2022). Humanistic and economic burden associated with depression in the United States: a cross-sectional survey analysis. BMC Psychiatry, 22(1), 542. https://doi.org/10.1186/s12888-022-04165-x 
+Johnston, D. A., Harvey, S. B., Glozier, N., Calvo, R. A., Christensen, H., & Deady, M. (2019). 
+The relationship between depression symptoms, absenteeism and presenteeism. Journal of affective disorders, 256, 536–540. https://doi.org/10.1016/j.jad.2019.06.041
+Josephine, K., Josefine, L., Philipp, D., David, E., & Harald, B. (2017). Internet- and mobile-based depression interventions for people with diagnosed depression: A systematic review and meta-analysis. Journal of affective disorders, 223, 28–40. https://doi.org/10.1016/j.jad.2017.07.021 
+Karyotaki, E., Efthimiou, O., Miguel, C., Bermpohl, F. M. G., Furukawa, T. A., Cuijpers, P., Individual Patient Data Meta-Analyses for Depression (IPDMA-DE) Collaboration, Riper, H., Patel, V., Mira, A., Gemmil, A. W., Yeung, A. S., Lange, A., Williams, A. D., Mackinnon, A., Geraedts, A., van Straten, A., Meyer, B., Björkelund, C., Knaevelsrud, C., … Forsell, Y. (2021). Internet-Based Cognitive Behavioral Therapy for Depression: A Systematic Review and Individual Patient Data Network Meta-analysis. JAMA psychiatry, 78(4), 361–371. https://doi.org/10.1001/jamapsychiatry.2020.4364
+Karyotaki, E., Riper, H., Twisk, J., Hoogendoorn, A., Kleiboer, A., Mira, A., Mackinnon, A., Meyer, B., Botella, C., Littlewood, E., Andersson, G., Christensen, H., Klein, J. P., Schröder, J., Bretón-López, J., Scheider, J., Griffiths, K., Farrer, L., Huibers, M. J., Phillips, R., … Cuijpers, P. (2017). Efficacy of Self-guided Internet-Based Cognitive Behavioral Therapy in the Treatment of Depressive Symptoms: A Meta-analysis of Individual Participant Data. JAMA psychiatry, 74(4), 351–359. https://doi.org/10.1001/jamapsychiatry.2017.0044
+Köhnen, M., Kriston, L., Härter, M., Baumeister, H., & Liebherz, S. (2021). Effectiveness and acceptance of technology-based psychological interventions for the acute treatment of unipolar depression: Systematic review and meta-analysis. Journal of Medical Internet Research, 23(6). http://dx.doi.org/10.2196/24584 
+Laursen, T. M., Musliner, K. L., Benros, M. E., Vestergaard, M., & Munk-Olsen, T. (2016). Mortality and life expectancy in persons with severe unipolar depression. J Affect Disord, 193, 203-207. https://doi.org/https://doi.org/10.1016/j.jad.2015.12.067 
+Lindegaard, T., Berg, M., & Andersson, G. (2020). Efficacy of internet-delivered 
+psychodynamic therapy: Systematic review and meta-analysis. Psychodynamic Psychiatry, 48(4), 437-454. https://doi.org/10.1521/pdps.2020.48.4.437
+Mamukashvili-Delau, M., Koburger, N., Dietrich, S., & Rummel-Kluge, C. (2022). Efficacy of computer- and/or internet-based cognitive-behavioral guided self-management for depression in adults: a systematic review and meta-analysis of randomized controlled trials. BMC Psychiatry, 22(1), 730. https://doi.org/doi:10.1186/s12888-022-04325-z 
+Mohr, D. C., Hart, S. L., Howard, I., Julian, L., Vella, L., Catledge, C., & Feldman, M. D. (2006). Barriers to psychotherapy among depressed and nondepressed primary care patients. Ann Behav Med, 32(3), 254-258. https://doi.org/10.1207/s15324796abm3203_12
+Moitra, M., Santomauro, D., Collins, P. Y., Vos, T., Whiteford, H., Saxena, S., & Ferrari, 
+J. (2022). The global gap in treatment coverage for major depressive disorder in 84 countries from 2000-2019: A systematic review and Bayesian meta-regression analysis. PLoS medicine, 19(2), e1003901. https://doi.org/10.1371/journal.pmed.1003901
+Moshe, I., Terhorst, Y., Philippi, P., Domhardt, M., Cuijpers, P., Cristea, I., Pulkki-Råback, L., Baumeister, H., & Sander, L. B. (2021). Digital interventions for the treatment of depression: A meta-analytic review. Psychological bulletin, 147(8), 749–786. https://doi.org/10.1037/bul0000334
+Pang, Y., Zhang, X., Gao, R., Xu, L., Shen, M., Shi, H., Li, Y., & Li, F. (2021). Efficacy of web-based self-management interventions for depressive symptoms: a meta-analysis of randomized controlled trials. BMC Psychiatry, 21(1), 398. 
+doi: 10.1186/s12888-021-03396-8
+Patel, S., Akhtar, A., Malins, S., Wright, N., Rowley, E., Young, E., Sampson, S., & Morriss, R. 
+(2020). The Acceptability and Usability of Digital Health Interventions for Adults With Depression, Anxiety, and Somatoform Disorders: Qualitative Systematic Review and Meta-Synthesis. Journal of medical Internet research, 22(7), e16228. https://doi.org/10.2196/16228 
+Rodriguez-Villa, E., Naslund, J., Keshavan, M., Patel, V., & Torous, J. (2020). Making mental 
+health more accessible in light of COVID-19: Scalable digital health with digital navigators in low and middle-income countries. Asian journal of psychiatry, 54, 102433. https://doi.org/10.1016/j.ajp.2020.102433
+Reins, J. A., Buntrock, C., Zimmermann, J., Grund, S., Harrer, M., Lehr, D., ... & Ebert, 
+D. D. (2021). Efficacy and moderators of internet-based interventions in adults with subthreshold depression: an individual participant data meta-analysis of randomized controlled trials. Psychotherapy and Psychosomatics, 90(2), 94-106. DOI: 10.1159/000507819
+Roman, M., Constantin, T., & Bostan, C. M. The efficiency of online cognitive-behavioral therapy for postpartum depressive symptomatology: a systematic review and meta-analysis. Women Health, 60(1), 99-112. https://doi/10.1080/03630242.2019.1610824
+Santomauro, D. F., Mantilla Herrera, A. M., Shadid, J., Zheng, P., Ashbaugh, C., Pigott, D. M., Abbafati, C., Adolph, C., Amlag, J. O., Aravkin, A. Y., Bang-Jensen, B. L., Bertolacci, G. J., Bloom, S. S., Castellano, R., Castro, E., Chakrabarti, S., Chattopadhyay, J., Cogen, R. M., Collins, J. K., . . . Ferrari, A. J. (2021). Global prevalence and burden of depressive and anxiety disorders in 204 countries and territories in 2020 due to the COVID-19 pandemic. The Lancet, 398(10312), 1700-1712. https://doi.org/10.1016/S0140-6736(21)02143-7 
+Schaffler, Y., Probst, T., Jesser, A., Humer, E., Pieh, C., Stippl, P., Haid, B., & Schigl, B. (2022). 
+Perceived Barriers and Facilitators to Psychotherapy Utilisation and How They Relate to Patient's Psychotherapeutic Goals. Healthcare (Basel, Switzerland), 10(11), 2228. https://doi.org/10.3390/healthcare10112228 
+Serrano-Ripoll, M. J., Zamanillo-Campos, R., Fiol-DeRoque, M. A., Castro, A., & Ricci-Cabello, I. (2022). Impact of Smartphone App-Based Psychological Interventions for Reducing Depressive Symptoms in People With Depression: Systematic Literature Review and Meta-analysis of Randomized Controlled Trials. JMIR mHealth and uHealth, 10(1), e29621. https://doi.org/10.2196/29621
+Sierra, M. A., Ruiz, F. J., & Flórez, C. L. (2018). A systematic review and meta-analysis of third-wave online interventions for depression. Revista Latinoamericana de Psicología, 50(2), 126-135. http://dx.doi.org/10.14349/rlp.2018.v50.n2.6
+Simmons, J. P., Nelson, L. D., and Simonsohn, U. (2011). False-positive psychology: undisclosed flexibility in data collection and analysis allows presenting anything as significant. Psychol. Sci, 22, 1359–1366. doi: 10.1177/0956797611417632
+Simonsohn, U., Simmons, J. P., & Nelson, L. D. (2020). Specification curve analysis. Nature human behaviour, 4(11), 1208–1214. https://doi.org/10.1038/s41562-020-0912-z
+Steegen, S., Tuerlinckx, F., Gelman, A., & Vanpaemel, W. (2016). Increasing Transparency Through a Multiverse Analysis. Perspectives on psychological science: a journal of the Association for Psychological Science, 11(5), 702–712. https://doi.org/10.1177/1745691616658637
+Stewart, W. F., Ricci, J. A., Chee, E., Hahn, S. R., & Morganstein, D. (2003). Cost of Lost Productive Work Time Among US Workers With Depression. Jama, 289(23), 3135-3144. https://doi.org/10.1001/jama.289.23.3135 
+Sztein, D. M., Koransky, C. E., Fegan, L., & Himelhoch, S. (2018). Efficacy of cognitive behavioural therapy delivered over the Internet for depressive symptoms: A systematic review and meta-analysis. Journal of telemedicine and telecare, 24(8), 527–539. https://doi.org/10.1177/1357633X17717402
+Voracek, M., Kossmeier, M., & Tran, U. S. (2019). Which data to meta-analyze, and how? A specification-curve and multiverse-analysis approach to meta-analysis. Zeitschrift für Psychologie, 227(1), 64–82. https://doi.org/10.1027/2151-2604/a000357
+Wells, M. J., Owen, J. J., McCray, L. W., Bishop, L. B., Eells, T. D., Brown, G. K., Richards, D., Thase, M. E., & Wright, J. H. (2018). Computer-Assisted Cognitive-Behavior Therapy for Depression in Primary Care: Systematic Review and Meta-Analysis. The primary care companion for CNS disorders, 20(2), 17r02196. https://doi.org/10.4088/PCC.17r02196
+World Health Organization. (2023, 31 July). Depressive disorder (depression). https://www.who.int/news-room/fact-sheets/detail/depression
+Wright, J. H., Owen, J. J., Richards, D., Eells, T. D., Richardson, T., Brown, G. K., Barrett, M., Rasku, M. A., Polser, G., & Thase, M. E. (2019). Computer-Assisted Cognitive-Behavior Therapy for Depression: A Systematic Review and Meta-Analysis. The Journal of clinical psychiatry, 80(2), 18r12188. https://doi.org/10.4088/JCP.18r12188
+Xiong, J., Wen, J. L., Pei, G. S., Han, X., & He, D. Q. (2023). Effectiveness of Internet-based cognitive behavioural therapy for employees with depression: a systematic review and meta-analysis. International journal of occupational safety and ergonomics: JOSE, 29(1), 268–281. https://doi.org/10.1080/10803548.2022.2043647
+Yang, D., Hur, J. W., Kwak, Y. B., & Choi, S. W. (2018). A systematic review and meta-analysis of applicability of web-based interventions for individuals with depression and quality of life impairment. Psychiatry Investigation, 15(8), 759-766. http://dx.doi.org/10.30773/pi.2018.03.15
+
+## Methods
+
+Borenstein, M., Hedges, L. V., Higgins, J. P., & Rothstein, H. R. (2010). A basic introduction to fixed-effect 
+and random-effects models for meta-analysis. Research synthesis methods, 1(2), 97–111. https://doi.org/10.1002/jrsm.12 
+Borenstein, M., Hedges, L. V., Higgins, J. P., & Rothstein, H. R. (2021). Introduction to
+meta-analysis. John Wiley & Sons.
+Cuijpers, P., van Straten, A., Warmerdam, L., & Andersson, G. (2008). Psychological treatment of depression: 
+A meta-analytic database of randomized studies. BMC Psychiatry, 8, Article 36. https://doi.org/10.1186/1471-244X-8-36
+Furukawa, T. A., Suganuma, A., Ostinelli, E. G., Andersson, G., Beevers, C. G., Shumake, J., Berger, T., 
+Boele, F. W., Buntrock, C., Carlbring, P., Choi, I., Christensen, H., Mackinnon, A., Dahne, J., Huibers, M. J. H., Ebert, D. D., Farrer, L., Forand, N. R., Strunk, D. R., Ezawa, I. D., … Cuijpers, P. (2021). Dismantling, optimising, and personalising internet cognitive behavioural therapy for depression: a systematic review and component network meta-analysis using individual participant data. The lancet Psychiatry, 8(6), 500–511. https://doi.org/10.1016/S2215-0366(21)00077-8
+Harrer, M., Kuper, P., Sprenger, A. & Cuijpers, P. (2022). metapsyTools: Several R Helper Functions For 
+the "Metapsy" Database. DOI: 10.5281/zenodo.6566632.
+Mohr, D. C., Cuijpers, P., & Lehman, K. (2011). Supportive Accountability: A Model for Providing Human 
+Support to Enhance Adherence to eHealth Interventions. J Med Internet Res, 13(1), e30. https://doi.org/10.2196/jmir.1602 
+Pustejovsky, J. E., & Tipton, E. (2022). Meta-analysis with Robust Variance Estimation: Expanding the 
+Range of Working Models. Prevention science: the official journal of the Society for Prevention Research, 23(3), 425–438. https://doi.org/10.1007/s11121-021-01246-3
+Sternet, J. A. C., Savović, J., Page, M. J., Elbers, R. G., Blencowe, N. S., Boutron, I., Cates, C. J., Cheng, H. 
+Y., Corbett, M. S., Eldridge, S. M., Emberson, J. R., Hernán, M. A., Hopewell, S., Hróbjartsson, A., Junqueira, D. R., Jüni, P., Kirkham, J. J., Lasserson, T., Li, T., McAleenan, A., … Higgins, J. P. T. (2019). RoB 2: a revised tool for assessing risk of bias in randomised trials. BMJ (Clinical research ed.), 366, l4898. https://doi.org/10.1136/bmj.l4898
+Van den Noortgate, W., Lopez-Lopez, J. A., Martın-Martınez,F., & Sanchez-Meca, J. (2013). Three-level 
+meta-analysis of dependent effect sizes. Behavior Research Methods, 45, 576–594. doi:10.3758/s13428-012-0261-6
+Viechtbauer W (2010). “Conducting meta-analyses in R with the metafor package.” Journal of Statistical 
+Software, 36(3), 1–48. doi:10.18637/jss.v036.i03.
+
+
+
+Balduzzi, S., Rücker, G., & Schwarzer, G. (2019). How to perform a meta-analysis with R: a practical tutorial. 
+Evidence-based mental health, 22(4), 153–160. https://doi.org/10.1136/ebmental-2019-300117
+R Core Team (2021). R: A language and environment for statistical computing. R Foundation
+for Statistical Computing.bor https://www.R-project.org/
+
+\newpage
+
+# Supplementary Material
+
+### Figure S1: Vibration of effects for the comparison of digital interventions with control conditions with at least 2, 5, 25 and 50 studies.
+```{r figure-voe2, fig.fullwidth=TRUE,  fig.height = 10, fig.width = 15, echo = FALSE}
+knitr::include_graphics("figures/voe_sensitivity.pdf")
+```
+
+\newpage
+
+#### Table S1: Multiple Median Regression
+```{r table_quant_reg, echo = FALSE}
+table_quant_reg
+```
+
+\newpage
+
+### Table S2. *All included effect sizes from primary studies.*
+
+```{r echo = FALSE}
+data_multiverse %>% 
+  select(
+    "Study" = study,
+    "Tech" = wf_1,
+    "Guidance" = wf_2,
+    "Group" = wf_3,
+    "Intervention" = wf_4,
+    "Control" = wf_5,
+    "Diagnosis" = wf_6,
+    "Risk of Bias" = wf_7,
+    "Time Point" = wf_8,
+    "Hedges' g" = yi,
+    "SE" = sei
+  ) %>%  
+  mutate(across("Tech":"Time Point", str_to_title),
+         across("Tech":"Time Point", as.factor ),
+         across("Hedges' g":"SE", ~round(., 2) )) %>% 
+  flextable() %>% 
+  fontsize(8)
+```
+
+
+\newpage
+
+### Population
+
+#### Table: Median Regression
+```{r echo = F}
+create_quant_reg_table <- function(model) {
+  
+  recapmod <- summary(model, se = "boot")
+  
+  table_reg <- data.frame(estimator=round(as.numeric(recapmod$coefficients[,1]),2)) %>%
+    mutate(
+      SE = round(as.numeric(recapmod$coefficients[,2]),3),
+      CI_lower = round(estimator - 1.96 * SE, 2) ,
+      CI_upper = round(estimator + 1.96 * SE, 2),
+      CI95 = paste0("[", CI_lower,", ", CI_upper ,"]"),
+      p = round(as.numeric(recapmod$coefficients[,4]) ,5)
+    ) %>%
+    mutate(variable = names(recapmod$coefficients[,1])) %>%
+    slice(2:n()) %>%
+    select(
+      Variable = variable,
+      Beta = estimator,
+      SE,
+      CI95, 
+      p
+    ) %>%
+    flextable() %>%
+    autofit()
+  
+  return(table_reg)
+}
+```
+
+```{r echo = F}
+specifications$wf_3 <- relevel(as.factor(specifications$wf_3), ref="Combined" )
+modQuantile_wf_3 <- quantreg::rq(mean~wf_3, 
+                                 specifications, tau = .5)
+
+create_quant_reg_table(modQuantile_wf_3) %>% 
+  add_header_lines("Which Factor: Types of Target Population") %>% 
+  add_footer_lines("Reference group = All populations combined.")
+```
+
+<br>
+
+#### Table: Effect size information based on primary study data.
+
+```{r echo = FALSE}
+data_multiverse %>% 
+  mutate(
+    Group = case_match(
+      wf_3,
+      "adul" ~ "Adults",
+      "med" ~ "Comorbidity Group",
+      "ppd" ~ "Postpartum Depression",
+      .default = str_to_sentence(wf_3))) %>% 
+  group_by(Group) %>%
+  dplyr::summarise(mean = mean(yi),
+                   median = median(yi),
+                   min = min(yi),
+                   max = max(yi),
+                   k = n()) %>% 
+  arrange(desc(mean)) %>% 
+  flextable()
+```
+
+<br>
+
+#### Table: Effect size information based on meta-analyses data.
+```{r echo = FALSE}
+table_wf_3 %>%  flextable()
+```
+
+\newpage
+
+### Intervention
+
+#### Table: Median Regression
+```{r echo = F}
+specifications$wf_4 <- relevel(as.factor(specifications$wf_4), ref="Combined" )
+modQuantile_wf_4 <- quantreg::rq(mean~wf_4, 
+                                 specifications, tau = .5)
+create_quant_reg_table(modQuantile_wf_4) %>% 
+  add_header_lines("Which Factor: Types of Interventions") %>% 
+  add_footer_lines("Reference group = all interventions combined.")
+```
+
+
+<br>
+
+#### Table: Effect size information based on primary study data.
+
+```{r echo = FALSE}
+data_multiverse %>% 
+  mutate(
+    Intervention = case_match(
+      wf_4,
+      "cbt-based" ~ "CBT-Based",
+      "not-cbt-based" ~ "Not-CBT-Based")) %>% 
+  group_by(Intervention) %>%
+  dplyr::summarise(mean = mean(yi),
+                   median = median(yi),
+                   min = min(yi),
+                   max = max(yi),
+                   k = n()) %>% 
+  arrange(desc(mean)) %>% 
+  flextable()
+```
+
+<br>
+
+#### Table: Effect size information based on meta-analyses data.
+```{r echo = FALSE}
+table_wf_4 %>%  flextable()
+```
+
+
+<br>
+
+#### Figure S2 *Raincloud plot of all meta-analyses on digital interventions for depression, grouped by different interventions*
+
+```{r raincloud-wf4, fig.fullwidth=TRUE,  fig.height = 5, fig.width = 7, echo = FALSE}
+knitr::include_graphics("figures/wf_4_raincloud.pdf")
+#fig_wf_4_raincloud
+```
+
+\n
+
+*Note.* Raincloud plots consist of three parts and depict the distribution of data (the cloud), a box-plot, and the raw data (the rain). They depict and visualize the distribution of summary effect sizes from all possible meta-analyses (produced by the multiverse meta-analysis) focusing either on a CBT-based intervention, non-CBT-based intervention, or all interventions.
+
+
+```{r, echo = F}
+open_a3
+```
+
+#### Figure S3 *Descriptive specification curve highlighting meta-analyses including only non-CBT based interventions* \n
+
+```{r descr-spec-curve_wf4, out.width = "220%", echo = FALSE}
+knitr::include_graphics("figures/fig_wf_4_spec_curve_not_cbt.pdf")
+```
+
+```{r echo = F}
+close_a3
+```
+
+\n
+
+*Note.* The top panel shows the meta-analytic summary effects (*g*) for each specification with their 95% confidence interval. The summary effects are sorted by their magnitude, ranging from lower to higher. Connecting the different summary effects results in the solid line, which is the specification curve. A horizontal dashed line of no effect is shown at *g* = 0 and a red dotted line is shown to indicate a small, yet clinically relevant effect size at *g* = 0.24. Published meta-analyses are shown on their respective position on the specification curve. The vertical columns in the bottom panel represent factor combinations of all *Which* factors. These include different technologies, types of guidance, diagnoses, recruitment strategies, control conditions, and strategies to deal with risk of biases. The *How* factors include several meta-analytical estimators: 3-level meta-analytical models, RVE = robust variance estimation, REML = restricted maximum likelihood estimation, FE = fixed effect model, *p*-uniform\*, PET-PEESE = Precision-Effect Test and Precision-Effect Estimate with Standard Errors, UWLS = Unrestricted Weighted Least Squares, and WAAP = Weighted Average of Adequately Powered). Each vertical column is color-coded, signifying the number of samples included in a specification (hot spectral colors for more included samples vs. cool spectral colors for less included samples). The overall pattern of the specification curve indicates that specifications with many samples and/or narrow confidence intervals are closer to the interquartile range of estimated means as opposed to specifications with only a few samples and/or wider confidence intervals.
+
+\n
+
+### Intervention: Technology of Delivery
+
+```{r echo = F}
+specifications$wf_1 <- relevel(as.factor(specifications$wf_1), ref="Combined" )
+modQuantile_wf_1 <- quantreg::rq(mean~wf_1, 
+                                 specifications, tau = .5)
+create_quant_reg_table(modQuantile_wf_1) %>% 
+  add_header_lines("Which Factor: Technology of Interventions") %>% 
+  add_footer_lines("Reference group = All technologies combined.")
+```
+
+<br>
+
+##### Table: Effect size information based on primary study data.
+
+```{r echo = FALSE}
+data_multiverse %>% 
+  mutate(
+    Technology = str_to_sentence(wf_1)) %>% 
+  group_by(Technology) %>%
+  dplyr::summarise(mean = mean(yi),
+                   median = median(yi),
+                   min = min(yi),
+                   max = max(yi),
+                   k = n()) %>% 
+  arrange(desc(mean)) %>% 
+  flextable()
+```
+
+<br>
+
+##### Table: Effect size information based on meta-analyses data.
+```{r echo = FALSE}
+table_wf_1 %>%  flextable()
+```
+
+<br>
+
+##### Figure S4. *Raincloud plot of all meta-analyses on digital interventions for depression, grouped by technology of intervention.*
+
+\n
+
+```{r raincloud-wf1, fig.fullwidth=TRUE,  fig.height = 5, fig.width = 7, echo = FALSE}
+knitr::include_graphics("figures/fig_wf_1_raincloud.pdf")
+# fig_wf_1_raincloud
+```
+
+\n
+
+*Note.* Raincloud plots consist of three parts and depict the distribution of data (the cloud), a box-plot, and the raw data (the rain). They depict and visualize the distribution of summary effect sizes from all possible meta-analyses (produced by the multiverse meta-analysis) on internet-based, smartphone-based, and combined interventions.
+
+
+
+```{r, echo = F}
+open_a3
+```
+
+##### Figure S5. *Descriptive specification curve highlighting smartphone interventions* \n
+
+```{r descr-spec-curve_wf1, out.width = "220%", echo = FALSE}
+knitr::include_graphics("figures/fig_wf_1_spec_curve_mobile.pdf")
+# fig_wf_1_spec_curve_mobile_focus
+# fig_wf_1_spec_curve_mobile_select
+```
+
+```{r echo = F}
+close_a3
+```
+
+\n
+
+*Note.* The top panel shows the meta-analytic summary effects (*g*) for each specification with their 95% confidence interval. The summary effects are sorted by their magnitude, ranging from lower to higher. Connecting the different summary effects results in the solid line, which is the specification curve. A horizontal dashed line of no effect is shown at *g* = 0 and a red dotted line is shown to indicate a small, yet clinically relevant effect size at *g* = 0.24. Published meta-analyses are shown on their respective position on the specification curve. The vertical columns in the bottom panel represent factor combinations of all *Which* factors. These include different technologies, types of guidance, diagnoses, recruitment strategies, control conditions, and strategies to deal with risk of biases. The *How* factors include several meta-analytical estimators: 3-level meta-analytical models, RVE = robust variance estimation, REML = restricted maximum likelihood estimation, FE = fixed effect model, *p*-uniform\*, PET-PEESE = Precision-Effect Test and Precision-Effect Estimate with Standard Errors, UWLS = Unrestricted Weighted Least Squares, and WAAP = Weighted Average of Adequately Powered). Each vertical column is color-coded, signifying the number of samples included in a specification (hot spectral colors for more included samples vs. cool spectral colors for less included samples). The overall pattern of the specification curve indicates that specifications with many samples and/or narrow confidence intervals are closer to the interquartile range of estimated means as opposed to specifications with only a few samples and/or wider confidence intervals. The overall pattern of the specification curve indicates that meta-analyses including only smartphone based interventions are smaller compared to specifications including other interventions.
+
+
+<br>
+
+### Intervention: Guidance
+
+#### Table: Median Regression
+```{r echo = F}
+specifications$wf_2 <- relevel(as.factor(specifications$wf_2), ref="Combined" )
+modQuantile_wf_2 <-  quantreg::rq(data = specifications, tau = 0.5, mean~wf_2)
+
+create_quant_reg_table(modQuantile_wf_2) %>% 
+  add_header_lines("Which Factor: Type of guidance") %>% 
+  add_footer_lines("Reference group = All guidance types combined.")
+```
+
+<br>
+
+
+#### Table: Effect size information based on primary study data.
+
+```{r echo = FALSE}
+data_multiverse %>% 
+  mutate("Guidance" = case_match(
+    wf_2,
+    "minimal to no support" ~ "Level 1: Minimal to no support",
+    "automated encouragement" ~ "Level 2: Automated Encouragement",
+    "human encouragement" ~ "Level 3: Human Encouragement",
+    "guided" ~ "Level 4: Human Guided"
+  ))  %>%  
+  filter(wf_8 == "post") %>% 
+  group_by(Guidance) %>%
+  dplyr::summarise(Median = median(yi),
+                   Min = min(yi),
+                   Max = max(yi),
+                   k = n()) %>% 
+  flextable()
+```
+
+<br>
+
+
+#### Table: Effect size information based on meta-analyses data.
+```{r echo = FALSE}
+table_wf_2 %>% 
+  mutate("Support" = case_match(
+    Support,
+    "Minimal to no support" ~ "Level 1: Minimal to no support",
+    "Automated encouragement" ~ "Level 2: Automated Encouragement",
+    "Human encouragement" ~ "Level 3: Human Encouragement",
+    "Guided" ~ "Level 4: Human Guided",
+    "Combined" ~ "Combined"
+  )) %>% arrange(Support) %>%  flextable()
+```
+
+
+<br>
+
+#### Figure S6. *Raincloud plot of all meta-analyses on digital interventions for depression, grouped by type of guidance.*
+
+\n
+
+```{r raincloud-wf2, fig.fullwidth=TRUE,  fig.height = 5, fig.width = 7, echo = FALSE}
+knitr::include_graphics("figures/fig_wf_2_raincloud.pdf")
+
+#fig_wf_2_raincloud
+```
+
+\n
+
+*Note.* Raincloud plots consist of three parts and depict the distribution of data (the cloud), a box-plot, and the raw data (the rain). They depict and visualize the distribution of summary effect sizes from all possible meta-analyses (produced by the multiverse meta-analysis) on guided, unguided, and combined interventions.
+
+```{r, echo = F}
+open_a3
+```
+
+#### Figure S7. *Descriptive specification curve highlighting unguided interventions* \n
+
+```{r descr-spec-curve_wf2, out.width = "220%", echo = FALSE}
+knitr::include_graphics("figures/fig_wf_2_spec_curve_unguided_select.pdf")
+```
+
+```{r echo = F}
+close_a3
+```
+
+*Note.* The top panel shows the meta-analytic summary effects (*g*) for each specification with their 95% confidence interval. The summary effects are sorted by their magnitude, ranging from lower to higher. Connecting the different summary effects results in the solid line, which is the specification curve. A horizontal dashed line of no effect is shown at *g* = 0 and a red dotted line is shown to indicate a small, yet clinically relevant effect size at *g* = 0.24. Published meta-analyses are shown on their respective position on the specification curve. The vertical columns in the bottom panel represent factor combinations of all *Which* factors. These include different technologies, types of guidance, diagnoses, recruitment strategies, control conditions, and strategies to deal with risk of biases. The *How* factors include several meta-analytical estimators: 3-level meta-analytical models, RVE = robust variance estimation, REML = restricted maximum likelihood estimation, FE = fixed effect model, *p*-uniform\*, PET-PEESE = Precision-Effect Test and Precision-Effect Estimate with Standard Errors, UWLS = Unrestricted Weighted Least Squares, and WAAP = Weighted Average of Adequately Powered). Each vertical column is color-coded, signifying the number of samples included in a specification (hot spectral colors for more included samples vs. cool spectral colors for less included samples). The overall pattern of the specification curve indicates that specifications with many samples and/or narrow confidence intervals are closer to the interquartile range of estimated means as opposed to specifications with only a few samples and/or wider confidence intervals. The overall pattern of the specification curve indicates that meta-analyses including only unguided interventions have smaller effect sizes compared to specifications including guided interventions.
+
+\n
+
+<br>
+
+### Control Group
+
+#### Table: Median Regression
+
+```{r echo = F}
+specifications$wf_5 <- relevel(as.factor(specifications$wf_5), ref="Combined" )
+modQuantile_wf_5 <-  quantreg::rq(mean~wf_5, 
+                                  specifications, tau = .5)
+create_quant_reg_table(modQuantile_wf_5) %>% 
+  add_header_lines("Which Factor: Control Groups") %>% 
+  add_footer_lines("Reference group = All control groups combined.")
+```
+
+<br>
+
+
+#### Table: Effect size information based on primary study data.
+
+```{r echo = FALSE}
+data_multiverse %>% 
+  mutate(
+    Control = str_to_sentence(wf_5)) %>% 
+  group_by(Control) %>%
+  dplyr::summarise(mean = mean(yi),
+                   median = median(yi),
+                   min = min(yi),
+                   max = max(yi),
+                   k = n()) %>% 
+  arrange(desc(mean)) %>% 
+  flextable()
+```
+
+<br>
+
+
+#### Table: Effect size information based on meta-analyses data.
+```{r echo = FALSE}
+table_wf_5 %>%  flextable()
+```
+
+
+<br>
+
+
+
+#### Figure S8. *Raincloud plot of all meta-analyses on digital interventions for depression, grouped by different control groups*
+
+```{r fig.fullwidth=TRUE,  fig.height = 5, fig.width = 7, echo = FALSE}
+knitr::include_graphics("figures/wf_5_raincloud.pdf")
+##fig_wf_5_raincloud
+
+```
+
+\n
+
+*Note.* Raincloud plots consist of three parts and depict the distribution of data (the cloud), a box-plot, and the raw data (the rain). They depict and visualize the distribution of summary effect sizes from all possible meta-analyses (produced by the multiverse meta-analysis) having either a waitlist control group or other (active control) group.
+
+```{r, echo = F}
+open_a3
+```
+
+#### Figure S9. *Descriptive specification curve highlighting only meta-analyses that used care-as-usual control groups as a comparsion* 
+
+```{r out.width = "220%", echo = FALSE}
+knitr::include_graphics("figures/fig_wf_5_spec_curve_cau.pdf")
+#fig_wf_5_spec_curve_cau
+```
+
+```{r echo = F}
+close_a3
+```
+
+*Note.* The top panel shows the meta-analytic summary effects (*g*) for each specification with their 95% confidence interval. The summary effects are sorted by their magnitude, ranging from lower to higher. Connecting the different summary effects results in the solid line, which is the specification curve. A horizontal dashed line of no effect is shown at *g* = 0 and a red dotted line is shown to indicate a small, yet clinically relevant effect size at *g* = 0.24. Published meta-analyses are shown on their respective position on the specification curve. The vertical columns in the bottom panel represent factor combinations of all *Which* factors. These include different technologies, types of guidance, diagnoses, recruitment strategies, control conditions, and strategies to deal with risk of biases. The *How* factors include several meta-analytical estimators: 3-level meta-analytical models, RVE = robust variance estimation, REML = restricted maximum likelihood estimation, FE = fixed effect model, *p*-uniform\*, PET-PEESE = Precision-Effect Test and Precision-Effect Estimate with Standard Errors, UWLS = Unrestricted Weighted Least Squares, and WAAP = Weighted Average of Adequately Powered). Each vertical column is color-coded, signifying the number of samples included in a specification (hot spectral colors for more included samples vs. cool spectral colors for less included samples). The overall pattern of the specification curve indicates that specifications with many samples and/or narrow confidence intervals are closer to the interquartile range of estimated means as opposed to specifications with only a few samples and/or wider confidence intervals. The overall pattern of the specification curve indicates that waitlist control groups produce much larger effect sizes than meta-analyses comparing an intervention to another type of control condition.
+
+\n
+
+
+### Outcomes
+
+#### Table: Median Regression
+```{r echo = F}
+specifications$wf_6 <- relevel(as.factor(specifications$wf_6), ref="Combined" )
+modQuantile_wf_6 <- quantreg::rq(mean~wf_6, 
+                                 specifications, tau = .5)
+create_quant_reg_table(modQuantile_wf_6) %>% 
+  add_header_lines("Which Factor: Diagnosis") %>% 
+  add_footer_lines("Reference group = All diagnoses combined.")
+```
+
+<br>
+
+
+#### Table: Effect size information based on primary study data.
+
+```{r echo = FALSE}
+data_multiverse %>% 
+  mutate(
+    Diagnosis = str_to_sentence(wf_6)) %>% 
+  group_by(Diagnosis) %>%
+  dplyr::summarise(mean = mean(yi),
+                   median = median(yi),
+                   min = min(yi),
+                   max = max(yi),
+                   k = n()) %>% 
+  arrange(desc(mean)) %>% 
+  flextable()
+```
+
+<br>
+
+
+#### Table: Effect size information based on meta-analyses data.
+```{r echo = FALSE}
+table_wf_6 %>%  flextable()
+```
+
+
+<br>
+
+
+#### Figure S10. *Raincloud plot of all meta-analyses on digital interventions for depression, grouped by different control groups*
+
+```{r raincloud-wf6, fig.fullwidth=TRUE,  fig.height = 5, fig.width = 7, echo = FALSE}
+knitr::include_graphics("figures/fig_wf_6_raincloud.pdf")
+```
+
+\n
+
+*Note.* Raincloud plots consist of three parts and depict the distribution of data (the cloud), a box-plot, and the raw data (the rain). They depict and visualize the distribution of summary effect sizes from all possible meta-analyses (produced by the multiverse meta-analysis) focusing either on MDD = Major Depressive Disorder, mood disorder, diagnoses based on exceeding a threshold relevant for depression on a patient reported outcome measure, or combined inclusion criteria.
+
+```{r, echo = F}
+open_a3
+```
+
+#### Figure S11. *Descriptive specification curve highlighting only meta-analyses that used care-as-usual control groups as a comparsion* \n
+
+```{r descr-spec-curve_wf6, out.width = "220%", echo = FALSE}
+knitr::include_graphics("figures/fig_wf_6_spec_curve_mdd.pdf")
+```
+
+```{r echo = F}
+close_a3
+```
+*Note.* The top panel shows the meta-analytic summary effects (*g*) for each specification with their 95% confidence interval. The summary effects are sorted by their magnitude, ranging from lower to higher. Connecting the different summary effects results in the solid line, which is the specification curve. A horizontal dashed line of no effect is shown at *g* = 0 and a red dotted line is shown to indicate a small, yet clinically relevant effect size at *g* = 0.24. Published meta-analyses are shown on their respective position on the specification curve. The vertical columns in the bottom panel represent factor combinations of all *Which* factors. These include different technologies, types of guidance, diagnoses, recruitment strategies, control conditions, and strategies to deal with risk of biases. The *How* factors include several meta-analytical estimators: 3-level meta-analytical models, RVE = robust variance estimation, REML = restricted maximum likelihood estimation, FE = fixed effect model, *p*-uniform\*, PET-PEESE = Precision-Effect Test and Precision-Effect Estimate with Standard Errors, UWLS = Unrestricted Weighted Least Squares, and WAAP = Weighted Average of Adequately Powered). Each vertical column is color-coded, signifying the number of samples included in a specification (hot spectral colors for more included samples vs. cool spectral colors for less included samples). The overall pattern of the specification curve indicates that specifications with many samples and/or narrow confidence intervals are closer to the interquartile range of estimated means as opposed to specifications with only a few samples and/or wider confidence intervals. The overall pattern of the specification curve indicates that waitlist control groups produce much larger effect sizes than meta-analyses comparing an intervention to another type of control condition.
+
+\n
+
+```{r, echo = F}
+
+```
+
+
+### Study Design: Time Point
+
+#### Table: Median Regression
+
+```{r echo = F}
+specifications$wf_8 <- relevel(as.factor(specifications$wf_8), ref="post" )
+modQuantile_wf_8 <- quantreg::rq(mean~wf_8, 
+                                 specifications, tau = .5)
+create_quant_reg_table(modQuantile_wf_8) %>% 
+  add_header_lines("Which Factor: Time of measurement") %>% 
+  add_footer_lines("Reference group = Post intervention.")
+```
+
+<br>
+
+
+#### Table: Effect size information based on primary study data.
+
+```{r echo = FALSE}
+data_multiverse %>% 
+  mutate(
+    Time = str_to_sentence(wf_8)) %>% 
+  group_by(Time) %>%
+  dplyr::summarise(mean = mean(yi),
+                   median = median(yi),
+                   min = min(yi),
+                   max = max(yi),
+                   k = n()) %>% 
+  arrange(desc(mean)) %>% 
+  flextable()
+```
+
+<br>
+
+
+#### Table: Effect size information based on meta-analyses data.
+```{r echo = FALSE}
+table_wf_8 %>%  flextable()
+```
+
+<br>
+
+
+#### Figure S12. *Raincloud plot of all meta-analyses on digital interventions for depression, grouped by different strategies to handle high risk of bias studies*
+
+```{r raincloud-wf8, fig.fullwidth=TRUE,  fig.height = 5, fig.width = 7, echo = FALSE}
+knitr::include_graphics("figures/fig_wf_8_raincloud.pdf")
+```
+
+\n
+
+*Note.* Raincloud plots consist of three parts and depict the distribution of data (the cloud), a box-plot, and the raw data (the rain). They depict and visualize the distribution of summary effect sizes from all possible meta-analyses (produced by the multiverse meta-analysis) having either excluded high risk of bias studies, only included low risk of bias studies, or included all studies.
+
+```{r, echo = F}
+open_a3
+```
+
+#### Figure S13. *Descriptive specification curve highlighting meta-analyses that only included low risk of bias studies* \n
+
+```{r, out.width = "220%", echo = FALSE}
+knitr::include_graphics("figures/fig_wf_8_spec_curve_fu.pdf")
+```
+
+```{r echo = F}
+close_a3
+```
+
+*Note.* The top panel shows the meta-analytic summary effects (*g*) for each specification with their 95% confidence interval. The summary effects are sorted by their magnitude, ranging from lower to higher. Connecting the different summary effects results in the solid line, which is the specification curve. A horizontal dashed line of no effect is shown at *g* = 0 and a red dotted line is shown to indicate a small, yet clinically relevant effect size at *g* = 0.24. Published meta-analyses are shown on their respective position on the specification curve. The vertical columns in the bottom panel represent factor combinations of all *Which* factors. These include different technologies, types of guidance, diagnoses, recruitment strategies, control conditions, and strategies to deal with risk of biases. The *How* factors include several meta-analytical estimators: 3-level meta-analytical models, RVE = robust variance estimation, REML = restricted maximum likelihood estimation, FE = fixed effect model, *p*-uniform\*, PET-PEESE = Precision-Effect Test and Precision-Effect Estimate with Standard Errors, UWLS = Unrestricted Weighted Least Squares, and WAAP = Weighted Average of Adequately Powered). Each vertical column is color-coded, signifying the number of samples included in a specification (hot spectral colors for more included samples vs. cool spectral colors for less included samples). The overall pattern of the specification curve indicates that specifications with many samples and/or narrow confidence intervals are closer to the interquartile range of estimated means as opposed to specifications with only a few samples and/or wider confidence intervals. The overall pattern of the specification curve indicates that including only the best studies (with the lowest risk of bias) produce similar effect sizes than including all studies.
+
+\n
+
+### Study Design: Different Strategies in Dealing with the Risk of Bias of Primary Studies
+
+#### Table: Median Regression
+
+```{r echo = F}
+specifications$wf_7 <- relevel(as.factor(specifications$wf_7), ref="Combined" )
+modQuantile_wf_7 <- quantreg::rq(mean~wf_7, 
+                                 specifications, tau = .5)
+create_quant_reg_table(modQuantile_wf_7) %>% 
+  add_header_lines("Which Factor: Control Groups") %>% 
+  add_footer_lines("Reference group = All control groups combined.")
+```
+
+<br>
+
+
+#### Table: Effect size information based on primary study data.
+
+```{r echo = FALSE}
+data_multiverse %>% 
+  mutate(
+    ROB = str_to_sentence(wf_7)) %>% 
+  group_by(ROB) %>%
+  dplyr::summarise(mean = mean(yi),
+                   median = median(yi),
+                   min = min(yi),
+                   max = max(yi),
+                   k = n()) %>% 
+  arrange(desc(mean)) %>% 
+  flextable()
+```
+
+<br>
+
+
+#### Table: Effect size information based on meta-analyses data.
+```{r echo = FALSE}
+table_wf_7 %>%  flextable()
+```
+
+
+<br>
+
+#### Figure S14. *Raincloud plot of all meta-analyses on digital interventions for depression, grouped by different strategies to handle high risk of bias studies*
+
+```{r, fig.fullwidth=TRUE,  fig.height = 5, fig.width = 7, echo = FALSE}
+knitr::include_graphics("figures/wf_7_raincloud.pdf")
+fig_wf_7_raincloud
+```
+
+\n
+
+*Note.* Raincloud plots consist of three parts and depict the distribution of data (the cloud), a box-plot, and the raw data (the rain). They depict and visualize the distribution of summary effect sizes from all possible meta-analyses (produced by the multiverse meta-analysis) having either excluded high risk of bias studies, only included low risk of bias studies, or included all studies.
+
+```{r, echo = F}
+open_a3
+```
+
+#### Figure S15. *Descriptive specification curve highlighting meta-analyses that only included low risk of bias studies* \n
+
+```{r descr-spec-curve_wf7, out.width = "220%", echo = FALSE}
+knitr::include_graphics("figures/fig_wf_7_spec_curve_include_best.pdf")
+```
+
+```{r echo = F}
+close_a3
+```
+
+*Note.* The top panel shows the meta-analytic summary effects (*g*) for each specification with their 95% confidence interval. The summary effects are sorted by their magnitude, ranging from lower to higher. Connecting the different summary effects results in the solid line, which is the specification curve. A horizontal dashed line of no effect is shown at *g* = 0 and a red dotted line is shown to indicate a small, yet clinically relevant effect size at *g* = 0.24. Published meta-analyses are shown on their respective position on the specification curve. The vertical columns in the bottom panel represent factor combinations of all *Which* factors. These include different technologies, types of guidance, diagnoses, recruitment strategies, control conditions, and strategies to deal with risk of biases. The *How* factors include several meta-analytical estimators: 3-level meta-analytical models, RVE = robust variance estimation, REML = restricted maximum likelihood estimation, FE = fixed effect model, *p*-uniform\*, PET-PEESE = Precision-Effect Test and Precision-Effect Estimate with Standard Errors, UWLS = Unrestricted Weighted Least Squares, and WAAP = Weighted Average of Adequately Powered). Each vertical column is color-coded, signifying the number of samples included in a specification (hot spectral colors for more included samples vs. cool spectral colors for less included samples). The overall pattern of the specification curve indicates that specifications with many samples and/or narrow confidence intervals are closer to the interquartile range of estimated means as opposed to specifications with only a few samples and/or wider confidence intervals. The overall pattern of the specification curve indicates that including only the best studies (with the lowest risk of bias) produce similar effect sizes than including all studies.
+
+\n
+
+
+
+### Study Design: Meta-Analytical Method
+
+#### Table: Median Regression
+
+```{r echo = F}
+specifications$ma_method <- relevel(as.factor(specifications$ma_method), ref="rve" )
+modQuantile_ma_method <- quantreg::rq(mean~ma_method, 
+                                      specifications, tau = .5)
+create_quant_reg_table(modQuantile_ma_method) %>% 
+  add_header_lines("How Factor: Meta-analytical method") %>% 
+  add_footer_lines("Reference group = Robust Variance Estimation.")
+```
+
+<br>
+
+
+#### Table: Effect size information based on meta-analyses data.
+```{r echo = FALSE}
+table_hf_1 %>%  flextable()
+```
+
+<br>
+
+
+#### Figure S16. *Raincloud plot of all meta-analyses on digital interventions for depression, grouped by different meta-analytical estimation methods*
+
+```{r raincloud-ma-method, fig.fullwidth=TRUE,  fig.height = 5, fig.width = 7, echo = FALSE}
+knitr::include_graphics("figures/fig_ma_method_raincloud.pdf")
+#ma_method_raincloud
+```
+
+\n
+
+*Note.* Raincloud plots consist of three parts and depict the distribution of data (the cloud), a box-plot, and the raw data (the rain). They depict and visualize the distribution of summary effect sizes from all possible meta-analyses (produced by the multiverse meta-analysis) calculated with different meta-analytical methods (p-uniform, RVE, 3-level, WAAP, REML, FE, UWLS, PEt-PEESE).
+
+```{r, echo = F}
+open_a3
+```
+
+#### Figure S17. *Descriptive specification curve highlighting meta-analyses that were analyzed using the WAAP method* 
+\n
+
+```{r descr-spec-curve_ma-method, out.width = "220%", echo = FALSE}
+knitr::include_graphics("figures/fig_method_spec_curve_waap.pdf")
+```
+
+```{r echo = F}
+close_a3
+```
+
+*Note.* The top panel shows the meta-analytic summary effects (*g*) for each specification with their 95% confidence interval. The summary effects are sorted by their magnitude, ranging from lower to higher. Connecting the different summary effects results in the solid line, which is the specification curve. A horizontal dashed line of no effect is shown at *g* = 0 and a red dotted line is shown to indicate a small, yet clinically relevant effect size at *g* = 0.24. Published meta-analyses are shown on their respective position on the specification curve. The vertical columns in the bottom panel represent factor combinations of all *Which* factors. These include different technologies, types of guidance, diagnoses, recruitment strategies, control conditions, and strategies to deal with risk of biases. The *How* factors include several meta-analytical estimators: 3-level meta-analytical models, RVE = robust variance estimation, REML = restricted maximum likelihood estimation, FE = fixed effect model, *p*-uniform\*, PET-PEESE = Precision-Effect Test and Precision-Effect Estimate with Standard Errors, UWLS = Unrestricted Weighted Least Squares, and WAAP = Weighted Average of Adequately Powered). Each vertical column is color-coded, signifying the number of samples included in a specification (hot spectral colors for more included samples vs. cool spectral colors for less included samples). The overall pattern of the specification curve indicates that specifications with many samples and/or narrow confidence intervals are closer to the interquartile range of estimated means as opposed to specifications with only a few samples and/or wider confidence intervals. The overall pattern of the specification curve indicates that using WAAP produces similar results as other methods.
+
+\n
+
+\newpage
+
+## Example of one universe containing all effect sizes: RVE description
+
+```{r, echo = FALSE }
+rve
+```
+
+\newpage
+
+### Funnel Plot
+
+```{r meta-funnel, fig.fullwidth=TRUE,  fig.height = 100, fig.width = 15, echo = FALSE}
+knitr::include_graphics("figures/fig_funnel.pdf")
+```
+
+\newpage
+
+### Forest Plot
+
+```{r meta-forest, fig.fullwidth=TRUE,  fig.height = 55, fig.width = 15, echo = FALSE}
+knitr::include_graphics("figures/meta_forest.pdf")
+```
+

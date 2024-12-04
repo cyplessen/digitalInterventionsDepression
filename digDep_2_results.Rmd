@@ -1,0 +1,1692 @@
+---
+title: "Multiverse Meta-Analysis for Digital Interventions for Depression"
+subtitle: "2. Results"
+author: "Constantin Yves Plessen"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    highlight: pygment
+    theme: flatly
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.dim = c(14, 7.5),
+                      out.width = "100%")
+set.seed(1234)
+
+# data wrangling and import
+library(plyr)
+library(tidyverse)
+library(readxl)
+
+# tables and figures
+library(ggpubr)
+library(grid)
+library(gridExtra)
+
+# data analysis
+library(metafor)
+library(puniform)
+library(svMisc)
+library(summarytools)
+
+# for plotting
+library(cowplot) #Arrange Plots
+library(ggrepel) #geom_label_repel
+library(raincloudplots)
+library(gt)
+library(fontawesome)
+library(gtExtras)
+
+# load helper functions
+source("functions/helper-functions.R")
+```
+
+# Overview
+
+This document provides the code for all text, tables and figures used in the manuscript on digital interventions for depression.
+
+## Input
+
+- `data/tidy/digDep_multiverse_data.csv`
+- `data/tidy/specifications_parallel.csv`
+
+<br>
+
+## Output
+- `figures/descriptive_specification.pdf`
+- `figures/descriptive_specification.pdf`
+- `tables/descriptive_specification.pdf`
+...
+
+<br>
+
+# Data wrangling
+
+## `data_multiverse`
+```{r}
+data_multiverse <- read_csv("data/tidy/digDep_multiverse_data.csv") 
+
+data_multiverse <- data_multiverse %>% 
+  mutate(wf_3 = ifelse(wf_3 == "other", "other group", wf_3))
+```
+
+### Overview of cleaned data used for analyses
+```{r}
+print(dfSummary(data_multiverse, 
+                varnumbers   = FALSE, 
+                valid.col    = FALSE, 
+                na.col = F,
+                graph.magnif = 0.6),
+      method = 'render')
+```
+
+## `data_specifications`
+
+```{r}
+specifications_parallel.import <- read.csv2(file = "data/tidy/specifications_parallel.csv") %>% 
+  mutate(row = row_number()) %>% 
+  mutate(wf_3 = ifelse(wf_3 == "other", "other group", wf_3))
+
+specifications_complete_cases <- specifications_parallel.import[complete.cases(specifications_parallel.import), ]
+
+data_specifications.clean <-
+  specifications_complete_cases[!duplicated(specifications_complete_cases[, c("mean", "set", "ma_method")]),] %>% 
+  filter(wf_8 != "total_wf_8") %>% # this is not a reasonable specification, mixing post and follow up
+  filter(dependency != "ignore") # this is not a reasonable specification
+```
+
+## Add Pet-PEESE correction
+```{r}
+data_specifications.pet_peese_corrected <- data_specifications.clean %>% 
+  filter(ma_method == "pet-peese") %>% 
+  mutate(mean = ifelse(mean  <0, 0, mean),
+         ma_method = "pet-peese (corrected)")
+
+data_specifications.bind <- bind_rows(data_specifications.clean, data_specifications.pet_peese_corrected)
+``` 
+
+## Select k for Meta-Analyses
+```{r}
+data_specifications_k2 <- data_specifications.bind
+specifications_k2  <- data_specifications_k2
+specifications_k5  <- data_specifications_k2 %>% filter(k >= 5)
+specifications_k10 <- data_specifications_k2 %>% filter(k >= 10)
+specifications_k25 <- data_specifications_k2 %>% filter(k >= 25)
+specifications_k50 <- data_specifications_k2 %>% filter(k >= 50)
+
+# Used for main analyses
+data_specifications <- specifications_k10
+```
+
+
+### Overview of cleaned data used for analyses
+```{r}
+print(dfSummary(data_specifications, 
+                varnumbers   = FALSE, 
+                valid.col    = FALSE, 
+                na.col = F,
+                graph.magnif = 0.6),
+      method = 'render')
+```
+
+<br>
+
+## `data_specifications_nice_names`
+
+Nice Names for Tables and Plotting
+```{r}
+data_specifications_nice_names <- data_specifications %>% 
+  select(
+    Technology = wf_1,
+    Support = wf_2,
+    Group = wf_3,
+    Intervention = wf_4,
+    Control = wf_5,
+    Diagnosis = wf_6,
+    ROB = wf_7,
+    Timepoint = wf_8,
+    Dependency = dependency,
+    Method = ma_method,
+    everything()) %>% 
+  mutate_if(is.character, str_to_sentence) %>% 
+  mutate_all(~ ifelse(str_detect(., "Total_"), "Combined", .)) %>% 
+  mutate_all(~ ifelse(str_detect(., "Other "), "Other", .)) %>% 
+  mutate_all(~ ifelse(str_detect(., "cbt"), "Not-CBT-Based", .)) %>% 
+  mutate_all(~ ifelse(str_detect(., "Wl"), "WLC", .)) %>% 
+  mutate_all(~ ifelse(str_detect(., "Cut"), "Cut-Off", .)) %>% 
+  mutate_all(~ ifelse(str_detect(., "Cbt"), "CBT-Based", .)) %>% 
+  mutate_all(~ ifelse(str_detect(., "Cau"), "CAU", .)) %>% 
+  mutate(ROB = case_match(
+    ROB,
+    "Exclude_worst" ~ "Exclude Worst Studies",
+    "Include_best" ~ "Include Best Studies",
+    .default = "Include All Studies"
+  ),
+  Group = case_match(
+    Group,
+    "Adul" ~ "Adults",
+    "Med" ~ "Comorbidity Group",
+    "Ppd" ~ "Postpartum Depression",
+    .default = Group
+  )
+  )
+```
+
+### Overview of cleaned data used for analyses
+```{r}
+print(dfSummary(data_specifications_nice_names, 
+                varnumbers   = FALSE, 
+                valid.col    = FALSE, 
+                na.col = F,
+                graph.magnif = 0.6),
+      method = 'render')
+```
+
+<br>
+
+# Data Sanity Checks
+
+Here I check if each estimator calculated the effect sizes correctly, whether the order of effect sizes is correct, and double check the manually implemented effect size estimation methods.
+
+
+### PET-PEESE
+
+All variations yield identical results, so no need to change the function.
+
+#### PET
+```{r}
+data <- data_multiverse %>% 
+  slice(1:100) %>% 
+  mutate(se = sqrt(vi))
+```
+
+
+```{r}
+# yves
+fit_PET <- lm(yi ~ sqrt(vi), 
+              weights = 1/vi, 
+              data = data)
+fit_PET
+```
+
+```{r}
+# mathias rma
+fit_PET_rma <- rma.uni(yi, se^2, mods = ~se, data = data, method = "FE")
+fit_PET_rma
+```
+
+```{r}
+#robma https://cran.r-project.org/web/packages/RoBMA/vignettes/Tutorial.html
+fit_PET_robma <- lm(yi ~ se, weights = 1/se^2, data = data)
+fit_PET_robma
+```
+
+#### PEESE
+
+```{r}
+fit_PEESE_robma <- lm(yi ~ I(se^2), weights = 1/se^2, data = data)
+fit_PEESE_robma
+
+fit_PEESE_yves <- lm(yi ~ vi, 
+                     weights = 1/vi, 
+                     data = data)
+fit_PEESE_yves
+
+fit_PEESE_rma <- rma.uni(yi, I(se^2), mods = ~vi, data = data, method = "FE")
+fit_PEESE_rma
+```
+
+```{r}
+set <- data_specifications %>%
+  filter(ma_method == "pet-peese") %>%
+  slice(1) %>%
+  pull(set) %>%
+  str_extract_all("\\d+") %>%
+  unlist() %>%
+  as.numeric()
+
+# Aggregate data
+dat <- data_multiverse %>% 
+  filter(es_id %in% set) %>% 
+  escalc(yi=yi, vi=vi, data=.)
+
+dat <- as.data.frame(aggregate(dat, 
+                               cluster = study,
+                               struct="CS" , #compound symmetric structure as nested are not indpendent
+                               rho = 0.5))
+
+PET.PEESE(dat)$b
+
+data_specifications %>%
+  filter(ma_method == "pet-peese") %>%
+  slice(1) %>%
+  pull(mean)
+```
+
+
+### UWLS
+
+## 
+```{r}
+set <- data_specifications %>%
+  filter(ma_method == "uwls") %>%
+  slice(1) %>%
+  pull(set) %>%
+  str_extract_all("\\d+") %>%
+  unlist() %>%
+  as.numeric()
+
+# Aggregate data
+dat <-  data_multiverse %>% 
+  filter(es_id %in% set) %>% 
+  escalc(yi=yi, vi=vi, data=.)
+
+dat <- as.data.frame(aggregate(dat, 
+                               cluster = study,
+                               struct="CS" , #compound symmetric structure as nested are not indpendent
+                               rho = 0.5))
+```
+
+#### Nicebread
+
+```{r}
+# WLS estimator from https://github.com/nicebread/meta-showdown/blob/master/MA-methods/6-WAAP.R
+
+# Weighted least squares estimator: Stanley, T. D., & Doucouliagos, H. (2015). Neither fixed nor random: weighted least squares meta-analysis. Statistics in Medicine, 34(13), 2116–2127. http://doi.org/10.1002/sim.6481
+WLS.est <- function(d, v, long=TRUE) {
+  se <- sqrt(v)
+  d.precision <- 1/se
+  d.stand <- d/se
+  l1 <- lm(d.stand ~ 0 + d.precision)
+  s1 <- summary(l1)
+  res <- data.frame(
+    method = "WLS",
+    term = "b0",
+    estimate = 	s1$coefficients[1, 1],
+    std.error = s1$coefficients[1, 2],
+    statistic = s1$coefficients[1, 2],
+    p.value = s1$coefficients[1, 4],
+    conf.low = confint(l1)[1],
+    conf.high = confint(l1)[2]
+  )
+  print(res)
+}
+
+WLS.est(d = dat$yi, v = dat$vi)
+```
+
+#### Yves
+```{r}
+data_specifications %>% filter(ma_method == "uwls") %>% slice(1) %>% pull(mean)
+```
+```{r}
+calculate_uwls(dat)
+```
+
+### WAAP
+```{r}
+# WAAP-WLS estimator from https://github.com/nicebread/meta-showdown/blob/master/MA-methods/6-WAAP.R
+
+# Stanley, T. D., Doucouliagos, H., & Ioannidis, J. P. A. (2017). Finding the power to reduce publication bias. Statistics in Medicine, 54(3), 30–19. http://doi.org/10.1002/sim.7228
+
+# return object: type = 1: WAAP, type = 2: WLS (must be numeric, otherwise it distorts the structure of the results object)
+WAAP.est <- function(d, v, est=c("WAAP-WLS"), long=TRUE) {
+  
+  # 1. determine which studies are in the top-N set
+  
+  # "Here, we employ FE (or, equivalently, WLS) as the proxy for ‘true’ effect."
+  WLS.all  <- WLS.est(d, v, long=FALSE)
+  true.effect <- WLS.all$estimate
+  
+  # only select studies that are adequatly powered (Stanley uses a two-sided test)
+  powered <- true.effect/2.8 >= sqrt(v)
+  
+  # 2. compute the unrestricted weighted average (WLS) rma of either all or only adequatly powered studies
+  # "Thus, the estimate we employ here is a hybrid between WAAP and WLS; thereby called, ‘WAAP-WLS’"
+  # "If there is no or only one adequately powered study in a systematic review, WAAP’s standard error and confidence interval are undefined. In this case, we compute WLS across the entire research record."
+  # "When there are two or more adequately powered studies, WAAP is calculated using WLS’s formula from this subset of adequately powered studies."
+  # Combined estimator: WAAP-WLS	
+  kAdequate <- sum(powered,na.rm=T)
+  
+  if (kAdequate >= 2) {
+    res <- WLS.est(d[powered], v[powered], long=FALSE)
+    res$method <- "WAAP-WLS"
+    res <- plyr::rbind.fill(res, data.frame(method="WAAP-WLS", term="estimator", type=1, kAdequate=kAdequate))
+  } else {
+    res <- WLS.all
+    res$method <- "WAAP-WLS"
+    res <- plyr::rbind.fill(res, data.frame(method="WAAP-WLS", term="estimator", type=2, kAdequate=kAdequate))
+  }
+  print(res)
+}
+```
+
+```{r}
+WAAP.est(d = dat$yi, v = dat$vi)
+```
+
+```{r}
+calculate_waap(dat)
+```
+
+<br>
+
+### REML
+
+```{r}
+set <- data_specifications %>%
+  filter(ma_method == "reml") %>%
+  slice(1) %>%
+  pull(set) %>%
+  str_extract_all("\\d+") %>%
+  unlist() %>%
+  as.numeric()
+
+# Aggregate data
+dat <-  data_multiverse %>% 
+  filter(es_id %in% set) %>% 
+  escalc(yi=yi, vi=vi, data=.)
+
+dat <- aggregate(dat, 
+                 cluster = study,
+                 struct="CS" , #compound symmetric structure as nested are not indpendent
+                 rho = 0.5)
+```
+
+
+```{r}
+rma.uni(dat)$b
+```
+
+
+```{r}
+data_specifications %>% filter(ma_method == "reml") %>% slice(1) %>% pull(mean)
+```
+
+
+### 3-level
+
+```{r}
+set <- data_specifications %>%
+  filter(ma_method == "3-level") %>%
+  slice(1) %>%
+  pull(set) %>%
+  str_extract_all("\\d+") %>%
+  unlist() %>%
+  as.numeric()
+
+# Aggregate data
+dat <-  data_multiverse %>% 
+  filter(es_id %in% set) %>% 
+  escalc(yi=yi, vi=vi, data=.)
+
+rma.mv(data = dat, 
+       yi = yi, 
+       V = vi, 
+       method = "REML", 
+       control = list("nlminb", rel.tol = 1e-8),
+       random = list(~1 | es_id,
+                     ~1 | study), 
+       sparse = TRUE)$b
+
+```
+
+```{r}
+data_specifications %>%   filter(ma_method == "3-level" ) %>%
+  slice(1) %>% pull(mean)
+```
+
+
+### Dependency Strategy
+
+```{r}
+data_specifications %>% 
+  group_by(dependency) %>% 
+  dplyr::summarise(mean_g = mean(mean),
+                   max_g = max(mean),
+                   min_g = min(mean),
+                   lb = mean(lb),
+                   ub = mean(ub),
+                   n =n())
+```
+
+Not that informative, as all publication aggregation methods are based on aggregate dependency strategies.
+
+<br>
+
+### Multiverse Sizes
+
+```{r}
+data_specifications %>% 
+  ggplot(aes(x = k)) + 
+  geom_bar() +
+  theme_classic()
+```
+
+<br>
+
+# Data Analysis
+
+## Create objects for results section of paper
+```{r}
+# create escalc object to averaged data set for multiple es per study
+data_avg <- metafor::escalc(
+  yi=yi, 
+  vi=vi, 
+  data=data_multiverse)
+
+# aggregate data
+data_avg <- as.data.frame(aggregate(
+  data_avg, 
+  cluster = study, 
+  struct="ID"))
+
+# create vector with info on sample sizes
+sample_size_data <- data_avg %>%
+  group_by(study) %>%
+  distinct(sample_size) %>%
+  plyr::summarise(sample_size_sum = sum(sample_size, na.rm = T),
+                  sample_size_median = median(sample_size, na.rm = T),
+                  sample_size_mean = mean(sample_size, na.rm = T))
+
+# number of unique studies
+unique_studies <- length(unique(data_multiverse$study))
+
+# create vector with info on effect sizes
+effect_size_quantiles <- data_avg %>%
+  dplyr::summarise(mean_g = mean(yi),
+                   mean_vi = mean(vi),
+                   range_min = range(yi)[1],
+                   range_max = range(yi)[2],
+                   quantile1 = quantile(yi)[1],
+                   quantile2 = quantile(yi)[2],
+                   quantile3 = quantile(yi)[3],
+                   quantile4 = quantile(yi)[4],
+                   quantile5 = quantile(yi)[5]
+  )
+
+# 3-level model over all primary studies
+reml_3lvl <-  rma.mv(data = data_multiverse,
+                     yi = yi,
+                     V = sei^2,
+                     method = "REML",
+                     control=list(optimizer="optim", 
+                                  optmethod="Nelder-Mead"),
+                     random = list(~1 | es_id,
+                                   ~1 | study),
+                     sparse=TRUE)
+
+# Robust variance estimation over all primary studies
+rve <- robust(
+  reml_3lvl, 
+  cluster=data_multiverse$study, 
+  clubSandwich=TRUE)
+
+# REML with averaged data
+reml_avg <- rma(
+  yi = data_avg$yi, 
+  vi = data_avg$vi,
+  method = "REML",
+  control = list(stepadj = 0.5,
+                 maxiter = 2000))
+
+# REML ignoring dependency data
+reml <- rma(
+  yi = data_multiverse$yi, 
+  vi = data_multiverse$vi,
+  method = "REML",
+  control = list(stepadj = 0.5,
+                 maxiter = 2000))
+
+# These Tau estimates are used for inferential #specification curve
+tau_reml_avg <- confint(reml_avg)
+tau_reml_avg$random[2]
+tau_reml_avg$random[2,3]
+
+# p-uniform
+puni_avg <- puni_star(
+  yi = data_avg$yi, 
+  vi = data_avg$vi,
+  side = "right")
+
+# Trim and fill
+taf_avg <- trimfill(
+  reml_avg)
+
+# Trim and fill
+taf <- trimfill(
+  reml)
+
+
+# create data set with different k specifications
+specifications_k10 <- data_specifications %>%
+  filter(k >=10) %>%
+  mutate(group = "k10")
+
+specifications_k25 <- data_specifications %>%
+  filter(k >=25) %>%
+  mutate(group = "k25")
+
+specifications_k50 <- data_specifications %>%
+  filter(k >=50) %>%
+  mutate(group = "k50")
+
+specifications_long_data <- rbind(specifications_k10,
+                                  specifications_k25,
+                                  specifications_k50) %>%
+  mutate(group = factor(group,levels=c("k10", "k25", "k50"))) %>%
+  dplyr::add_count(group) %>%
+  mutate(label = paste0(group,"\n","(n=",n,")"))
+
+# IQR of Specification curve
+quantile <- quantile(data_specifications$mean)
+iqr <- c(quantile[2], quantile[4])
+
+quantile_k10 <- quantile(specifications_k10$mean)
+iqr_k10 <- c(quantile_k10[2], quantile_k10[4])
+
+quantile_k25 <- quantile(specifications_k25$mean)
+iqr_k25 <- c(quantile_k25[2], quantile_k25[4])
+
+quantile_k50 <- quantile(specifications_k50$mean)
+iqr_k50 <- c(quantile_k50[2], quantile_k50[4])
+```
+
+## Forest Plot
+
+```{r, echo = FALSE}
+meta <- meta::metagen(data = data_multiverse,
+                      TE = yi, 
+                      seTE = sqrt(vi), 
+                      cluster = study,
+                      studlab = study,
+                      sm = "g", 
+                      hakn = TRUE, 
+                      method.tau = "REML", 
+                      prediction = TRUE, 
+                      random = TRUE,
+                      common = FALSE)
+
+pdf(file = "figures/meta_forest.pdf",    
+    width = 15,
+    height = 55) 
+
+meta::forest(meta,
+             cluster = TRUE,
+             xlab = "Hedges' g",
+             test.subgroup = FALSE,
+             weigth = TRUE,
+             col.diamond = "black",
+             leftcols = c("study", "wf_3", "wf_4", "wf_5", "wf_6", "wf_7"),
+             leftlabs = c("Author", "Population", "Intervention", "Control", "Outcome", "Risk of Bias"))
+
+
+dev.off()
+```
+
+## Funnel Plot
+
+```{r, echo = FALSE}
+pdf(file = "figures/fig_funnel.pdf",    # The directory you want to save the file in
+    width = 14, # The width of the plot in inches
+    height = 8) # The height of the plot in inches
+
+### draw funnel plots
+funnel(taf, 
+       level=c(90, 95, 99), 
+       shade=c("white", "gray55", "gray75"), 
+       legend="right"
+)
+
+reg <- regtest(reml)
+
+se <- seq(0,1.8,length=100)
+
+lines(coef(reg$fit)[1] + coef(reg$fit)[2]*se, se, lwd=2)
+
+reg_vi <- regtest(reml, predictor="vi")
+
+### add regression line to funnel plot (using the sampling variances as predictor)
+lines(coef(reg_vi$fit)[1] + coef(reg_vi$fit)[2]*se^2, se, lwd=2, lty="dotted")
+
+### add legend
+legend("topright", 
+       inset=0.01, 
+       lty=c("solid","dotted"), 
+       lwd=2,
+       cex=1, 
+       bg="white",
+       legend=c("Standard Errors as Predictor (PET)",
+                "Sampling Variances as Predictor (PEESE)"))
+dev.off()
+```
+
+## Effect sizes of multiverse
+
+```{r}
+### % of the estimated means were greater than 0
+mean_over_zero <- data_specifications %>% 
+  filter(mean > 0) %>% 
+  nrow()
+
+mean_over_zero
+
+percentage_mean_over_zero <- mean_over_zero/nrow(data_specifications) * 100
+
+percentage_mean_over_zero
+
+## % of these had 95% *CIs* that did not include zero
+ci_over_zero <- data_specifications %>% 
+  filter( lb > 0) %>% 
+  nrow()
+
+ci_over_zero
+
+percentage_ci_over_zero <- ci_over_zero/nrow(data_specifications) * 100
+
+percentage_ci_over_zero
+
+## Clinically relevant effect sizes
+
+mean_over_clinically_relevance <- data_specifications %>% 
+  filter(mean > .24) %>% 
+  nrow()
+
+mean_over_clinically_relevance
+
+percentage_mean_over_clinically_relevance <- mean_over_clinically_relevance/nrow(data_specifications) * 100
+
+percentage_mean_over_clinically_relevance
+
+ci_over_clinically_relevance <- data_specifications %>% 
+  filter(lb > .24) %>% 
+  nrow()
+
+ci_over_clinically_relevance
+
+percentage_ci_over_clinically_relevance <- ci_over_clinically_relevance/nrow(data_specifications) * 100
+
+percentage_ci_over_clinically_relevance
+
+# Number/percentage of studies with means/CIs larger than #important cutoff (zero or small ES of g = .24) for k10
+mean_over_zero_k10 <- specifications_k10 %>%
+  filter(mean > 0) %>%
+  nrow()
+
+percentage_mean_over_zero_k10 <- mean_over_zero_k10/nrow(specifications_k10) * 100
+
+mean_over_clinically_relevance_k10 <- specifications_k10 %>%
+  filter(mean > .24) %>%
+  nrow()
+
+percentage_mean_over_clinically_relevance_k10 <- mean_over_clinically_relevance_k10/nrow(specifications_k10) * 100
+
+ci_over_clinically_relevance_k10 <- specifications_k10 %>%
+  filter(lb > .24) %>%
+  nrow()
+
+percentage_ci_over_clinically_relevance_k10 <- ci_over_clinically_relevance_k10/nrow(specifications_k10) * 100
+
+ci_over_zero_k10 <- specifications_k10 %>%
+  filter(lb > 0) %>%
+  nrow()
+
+percentage_ci_over_zero_k10 <- ci_over_zero_k10/nrow(specifications_k10) * 100
+```
+
+<br>
+
+## Overall Effect Sizes
+
+```{r}
+data_specifications%>% 
+  dplyr::summarise(mean_g = mean(mean),
+                   max = max(mean),
+                   min = min(mean),
+                   mean_lb = mean(lb, na.rm = T),
+                   mean_ub = mean(ub, na.rm = T),
+                   n =n()) 
+```
+
+# Data Visualization: Descriptive Specification Curve
+
+```{r}
+descriptive_spec_curve <- plot_descriptive_spec_curve(
+  data = data_specifications)
+
+ggsave("figures/descriptive_spec_curve.pdf", 
+       descriptive_spec_curve, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+```
+<br>
+
+# Inspecting Which and How Factors
+
+```{r}
+#data_specifications <- data_specifications %>%
+#  mutate(across(wf_1:wf_8, ~ ifelse(startsWith(., "total_"), "Combined", .)))
+```
+
+## wf_1: Technology
+
+### Effect Size Tables
+
+#### Overall
+
+```{r}
+table_wf_1 <- summarise_factors(data = data_specifications_nice_names,
+                                wf = Technology)
+
+table_wf_1
+```
+
+#### By Group
+```{r}
+table_wf_1.med <- create_summary_table(data_specifications,
+                                       variable_selection = wf_1,
+                                       filter_variable = wf_3,
+                                       "med"
+)
+
+table_wf_1.med.ppd <- create_summary_table(data_specifications,
+                                           variable_selection = wf_1,
+                                           filter_variable = wf_3,
+                                           "ppd"
+)
+
+table_wf_1.med.other <- create_summary_table(data_specifications,
+                                             variable_selection = wf_1,
+                                             filter_variable = wf_3,
+                                             "other group"
+)
+
+table_wf_1.med.young <- create_summary_table(data_specifications,
+                                             variable_selection = wf_1,
+                                             filter_variable = wf_3,
+                                             "young"
+)
+
+table_wf_1.med.adul <- create_summary_table(data_specifications,
+                                            variable_selection = wf_1,
+                                            filter_variable = wf_3,
+                                            "adul"
+)
+
+table_wf_1.med.comb <- create_summary_table(data_specifications,
+                                            variable_selection = wf_1,
+                                            filter_variable = wf_3,
+                                            "Combined"
+)
+```
+
+### Raincloud Plots
+```{r}
+fig_wf_1_raincloud <- create_rain_plot(data = data_specifications_nice_names,
+                                       method = "all",
+                                       filter_variable =  Technology,
+                                       group_variable = Technology,
+                                       value = "Technology")
+
+fig_wf_1_raincloud
+
+ggsave("figures/fig_wf_1_raincloud.pdf", 
+       fig_wf_1_raincloud, 
+       width = 7, 
+       height = 5,
+       dpi = "retina"
+)
+```
+
+### Descriptive Spec Curves
+```{r}
+fig_wf_1_spec_curve_internet <- plot_descriptive_spec_curve(
+  variable = wf_1, 
+  value = "website", 
+  method = "focus")
+fig_wf_1_spec_curve_internet
+
+fig_wf_1_spec_curve_mobile_focus <- plot_descriptive_spec_curve(
+  variable = wf_1, 
+  value = "mobile", 
+  method = "focus")
+fig_wf_1_spec_curve_mobile_focus
+
+fig_wf_1_spec_curve_mobile_select <- plot_descriptive_spec_curve(
+  variable = wf_1, 
+  value = "mobile", 
+  method = "select")
+fig_wf_1_spec_curve_mobile_select
+
+ggsave("figures/fig_wf_1_spec_curve_mobile.pdf", 
+       fig_wf_1_spec_curve_mobile_select, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+```
+
+<br>
+
+## wf_2: Guidance
+
+### Effect Size Table
+
+#### Overall
+
+```{r}
+table_wf_2 <- summarise_factors(data = data_specifications_nice_names,
+                                wf = Support)
+```
+
+#### By Diagnosis
+```{r}
+table_wf_2.diag.cut <- create_summary_table(data_specifications_nice_names,
+                                            variable_selection = Support,
+                                            filter_variable = Diagnosis,
+                                            "Cut-Off"
+)
+table_wf_2.diag.mdd <- create_summary_table(data_specifications_nice_names,
+                                            variable_selection = Support,
+                                            filter_variable = Diagnosis,
+                                            "Mdd"
+)
+
+table_wf_2.diag.mood <- create_summary_table(data_specifications_nice_names,
+                                             variable_selection = Support,
+                                             filter_variable = Diagnosis,
+                                             "Mood"
+)
+```
+
+### Raincloud Plots
+```{r}
+fig_wf_2_raincloud <- create_rain_plot(data = data_specifications_nice_names,
+                                       method = "all",
+                                       filter_variable =  Support,
+                                       group_variable = Support,
+                                       value = "Support") 
+
+ggsave("figures/fig_wf_2_raincloud.pdf", 
+       fig_wf_2_raincloud, 
+       width = 7, 
+       height = 5,
+       dpi = "retina"
+)
+```
+
+### Descriptive Spec Curve
+```{r}
+fig_wf_2_spec_curve_guided <- plot_descriptive_spec_curve(
+  variable = wf_2, 
+  value = "guided", 
+  method = "focus")
+
+fig_wf_2_spec_curve_guided 
+
+fig_wf_2_spec_curve_unguided <- plot_descriptive_spec_curve(
+  variable = wf_2, 
+  value = "minimal to no support", 
+  method = "focus")
+
+fig_wf_2_spec_curve_unguided 
+
+fig_wf_2_spec_curve_unguided_select <- plot_descriptive_spec_curve(
+  variable = wf_2, 
+  value = "minimal to no support", 
+  method = "select")
+
+fig_wf_2_spec_curve_unguided_select 
+
+ggsave("figures/fig_wf_2_spec_curve_unguided_select.pdf", 
+       fig_wf_2_spec_curve_unguided_select, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+
+ggsave("figures/fig_wf_2_spec_curve_guided.pdf", 
+       fig_wf_2_spec_curve_guided, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+```
+
+## wf_3: Target Group
+
+### Tables
+
+#### Overall
+```{r}
+table_wf_3 <- summarise_factors(data = data_specifications_nice_names,
+                                wf = Group)
+```
+
+#### By Control Condition
+```{r}
+table_wf_3.cau <- create_summary_table(data_specifications_nice_names,
+                                       variable_selection = Group,
+                                       filter_variable = Control,
+                                       "CAU"
+)
+```
+
+### Raincloud Plots
+
+
+```{r}
+fig_wf_3_raincloud <- create_rain_plot(data = data_specifications_nice_names,
+                                       method = "all",
+                                       filter_variable =  Group,
+                                       group_variable = Group,
+                                       value = "Group") 
+
+ggsave("figures/fig_wf_3_raincloud.pdf", 
+       fig_wf_3_raincloud, 
+       width = 7, 
+       height = 5,
+       dpi = "retina"
+)
+```
+
+### Descriptive Spec Curve
+
+#### Adults
+
+```{r}
+fig_wf_3_spec_curve_adul <- plot_descriptive_spec_curve(
+  variable = wf_3, 
+  value = "adul", 
+  method = "focus")
+
+ggsave("figures/fig_wf_3_spec_curve_adul.pdf", 
+       fig_wf_3_spec_curve_adul, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+```
+
+#### Medical
+
+```{r}
+fig_wf_3_spec_curve_med <- plot_descriptive_spec_curve(
+  variable = wf_3, 
+  value = "med", 
+  method = "focus")
+
+ggsave("figures/fig_wf_3_spec_curve_med.pdf", 
+       fig_wf_3_spec_curve_med, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+```
+
+#### Young
+
+```{r}
+fig_wf_3_spec_curve_young <- plot_descriptive_spec_curve(
+  variable = wf_3, 
+  value = "young", 
+  method = "focus")
+fig_wf_3_spec_curve_young
+
+ggsave("figures/fig_wf_3_spec_curve_young.pdf", 
+       fig_wf_3_spec_curve_young, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+```
+
+
+## wf_4: Intervention
+
+### Tables
+
+#### Overall
+```{r}
+table_wf_4 <- summarise_factors(
+  data = data_specifications_nice_names,
+  wf = Intervention)
+```
+```{r}
+paste(round(as.numeric(slice_max(table_wf_4, table_wf_4$"Mean")$N)/sum(table_wf_4$N) * 100, 0), "%")
+```
+
+#### By Timepoint
+```{r}
+table_wf_4.post <- create_summary_table(data_specifications,
+                                        variable_selection = wf_4,
+                                        filter_variable = wf_8,
+                                        "post"
+)
+
+table_wf_4.fu <- create_summary_table(data_specifications,
+                                      variable_selection = wf_4,
+                                      filter_variable = wf_8,
+                                      "follow-up"
+)
+
+```
+
+### Raincloud Plots
+```{r}
+fig_wf_4_raincloud <- create_rain_plot(data = data_specifications_nice_names,
+                                       method = "all",
+                                       filter_variable =  Intervention,
+                                       group_variable = Intervention,
+                                       value = "Intervention") 
+
+ggsave("figures/fig_wf_4_raincloud.pdf", 
+       fig_wf_4_raincloud, 
+       width = 7, 
+       height = 5,
+       dpi = "retina"
+)
+```
+
+### Descriptive Spec Curve
+```{r}
+fig_wf_4_spec_curve_not_cbt <- plot_descriptive_spec_curve(
+  variable = wf_4, 
+  value = "not-cbt-based", 
+  method = "focus")
+
+fig_wf_4_spec_curve_not_cbt 
+
+ggsave("figures/fig_wf_4_spec_curve_not_cbt.pdf", 
+       fig_wf_4_spec_curve_not_cbt, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+```
+
+
+## wf_5: Control
+
+### Tables
+
+#### Overall
+
+```{r}
+table_wf_5 <- summarise_factors(data = data_specifications_nice_names,
+                                wf = Control)
+```
+
+#### By Timepoint
+```{r}
+table_wf_5.post <- create_summary_table(data_specifications,
+                                        variable_selection = wf_5,
+                                        filter_variable = wf_8,
+                                        "post"
+)
+
+table_wf_5.fu <- create_summary_table(data_specifications,
+                                      variable_selection = wf_5,
+                                      filter_variable = wf_8,
+                                      "follow-up"
+)
+
+```
+
+### Raincloud Plots
+
+```{r}
+fig_wf_5_raincloud <- create_rain_plot(data = data_specifications_nice_names,
+                                       method = "all",
+                                       filter_variable =  Control,
+                                       group_variable = Control,
+                                       value = "Control") 
+
+ggsave("figures/fig_wf_5_raincloud.pdf", 
+       fig_wf_5_raincloud, 
+       width = 7, 
+       height = 5,
+       dpi = "retina"
+)
+```
+
+### Descriptive Spec Curve
+```{r}
+fig_wf_5_spec_curve_other <- plot_descriptive_spec_curve(
+  variable = wf_5, 
+  value = "other ctr", 
+  method = "focus")
+
+fig_wf_5_spec_curve_other 
+
+ggsave("figures/fig_wf_5_spec_curve_other.pdf", 
+       fig_wf_5_spec_curve_other, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+
+fig_wf_5_spec_curve_wlc <- plot_descriptive_spec_curve(
+  variable = wf_5, 
+  value = "wl", 
+  method = "focus")
+fig_wf_5_spec_curve_wlc 
+
+fig_wf_5_spec_curve_cau <- plot_descriptive_spec_curve(
+  variable = wf_5, 
+  value = "cau", 
+  method = "focus")
+fig_wf_5_spec_curve_cau 
+
+ggsave("figures/fig_wf_5_spec_curve_cau.pdf", 
+       fig_wf_5_spec_curve_cau, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+
+ggsave("figures/fig_wf_5_spec_curve_wlc.pdf", 
+       fig_wf_5_spec_curve_wlc, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+```
+
+## wf_6: Diagnosis
+
+### Tables
+
+#### Overall
+```{r}
+table_wf_6 <- summarise_factors(data = data_specifications_nice_names,
+                                wf = Diagnosis)
+```
+
+#### By Timepoint
+```{r}
+table_wf_6.post <- create_summary_table(data_specifications,
+                                        variable_selection = wf_6,
+                                        filter_variable = wf_8,
+                                        "post"
+)
+
+table_wf_6.fu <- create_summary_table(data_specifications,
+                                      variable_selection = wf_6,
+                                      filter_variable = wf_8,
+                                      "follow-up"
+)
+
+```
+
+
+### Raincloud Plots
+```{r}
+fig_wf_6_raincloud <- create_rain_plot(data = data_specifications_nice_names,
+                                       method = "all",
+                                       filter_variable =  Diagnosis,
+                                       group_variable = Diagnosis,
+                                       value = "Diagnosis") 
+
+ggsave("figures/fig_wf_6_raincloud.pdf", 
+       fig_wf_6_raincloud, 
+       width = 7, 
+       height = 5,
+       dpi = "retina"
+)
+```
+
+### Descriptive Spec Curve
+```{r}
+fig_wf_6_spec_curve_mdd <- plot_descriptive_spec_curve(
+  variable = wf_6, 
+  value = "mdd", 
+  method = "focus")
+
+fig_wf_6_spec_curve_mdd 
+ggsave("figures/fig_wf_6_spec_curve_mdd.pdf", 
+       fig_wf_6_spec_curve_mdd, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+```
+
+
+## wf_7: ROB
+
+### Tables
+
+#### Overall
+```{r}
+table_wf_7 <- summarise_factors(data = data_specifications_nice_names,
+                                wf = ROB)
+```
+
+#### By Timepoint
+```{r}
+table_wf_7.post <- create_summary_table(data_specifications,
+                                        variable_selection = wf_7,
+                                        filter_variable = wf_8,
+                                        "post"
+)
+
+table_wf_7.fu <-create_summary_table(data_specifications,
+                                     variable_selection = wf_7,
+                                     filter_variable = wf_8,
+                                     "follow-up"
+)
+
+```
+
+
+### Raincloud Plots
+```{r}
+fig_wf_7_raincloud <- create_rain_plot(data = data_specifications_nice_names,
+                                       method = "all",
+                                       filter_variable =  ROB,
+                                       group_variable = ROB,
+                                       value = "ROB") 
+
+ggsave("figures/fig_wf_7_raincloud.pdf", 
+       fig_wf_7_raincloud, 
+       width = 7, 
+       height = 5,
+       dpi = "retina"
+)
+```
+
+### Descriptive Spec Curve
+```{r}
+fig_wf_7_spec_curve_include_best <- plot_descriptive_spec_curve(
+  variable = wf_7, 
+  value = "include_best", 
+  method = "focus")
+
+fig_wf_7_spec_curve_include_best 
+ggsave("figures/fig_wf_7_spec_curve_include_best.pdf", 
+       fig_wf_7_spec_curve_include_best, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+```
+
+```{r}
+data_specifications %>% dplyr::count(wf_7)
+```
+
+
+## wf_8: Time
+
+### Effect Size Tables
+
+#### Overall
+
+```{r}
+table_wf_8 <- summarise_factors(data = data_specifications_nice_names,
+                                wf = Timepoint)
+```
+
+#### By Group
+```{r}
+table_wf_8.med <- create_summary_table(data_specifications,
+                                       variable_selection = wf_8,
+                                       filter_variable = wf_3,
+                                       "med"
+)
+
+table_wf_8.ppd <- create_summary_table(data_specifications,
+                                       variable_selection = wf_8,
+                                       filter_variable = wf_3,
+                                       "ppd"
+)
+
+table_wf_8.other <- create_summary_table(data_specifications,
+                                         variable_selection = wf_8,
+                                         filter_variable = wf_3,
+                                         "other group"
+)
+
+table_wf_8.young <- create_summary_table(data_specifications,
+                                         variable_selection = wf_8,
+                                         filter_variable = wf_3,
+                                         "young"
+)
+
+table_wf_8.adul <- create_summary_table(data_specifications,
+                                        variable_selection = wf_8,
+                                        filter_variable = wf_3,
+                                        "adul"
+)
+
+table_wf_8.combined <- create_summary_table(data_specifications,
+                                            variable_selection = wf_8,
+                                            filter_variable = wf_3,
+                                            "Combined"
+)
+```
+
+### Raincloud Plots
+```{r}
+fig_wf_8_raincloud <- create_rain_plot(data = data_specifications_nice_names,
+                                       method = "all",
+                                       filter_variable =  Timepoint,
+                                       group_variable = Timepoint,
+                                       value = "Timepoint")
+
+fig_wf_8_raincloud
+
+ggsave("figures/fig_wf_8_raincloud.pdf", 
+       fig_wf_8_raincloud, 
+       width = 7, 
+       height = 5,
+       dpi = "retina"
+)
+```
+
+### Descriptive Spec Curves
+```{r}
+fig_wf_8_spec_curve_fu <- plot_descriptive_spec_curve(
+  variable = wf_8, 
+  value = "follow-up", 
+  method = "focus")
+fig_wf_8_spec_curve_fu
+
+ggsave("figures/fig_wf_8_spec_curve_fu.pdf", 
+       fig_wf_8_spec_curve_fu, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+```
+
+<br>
+
+## hf_1: Method
+
+### Tables
+```{r}
+table_hf_1 <- summarise_factors(
+  data_specifications_nice_names,
+  wf = Method)
+```
+
+### Raincloud Plots
+```{r}
+fig_ma_method_raincloud <- create_rain_plot(data = data_specifications_nice_names,
+                                            method = "all",
+                                            filter_variable =  Method,
+                                            group_variable = Method,
+                                            value = "Method") 
+
+ggsave("figures/fig_ma_method_raincloud.pdf", 
+       fig_ma_method_raincloud, 
+       width = 7, 
+       height = 5,
+       dpi = "retina"
+)
+```
+
+### Descriptive Spec Curve
+```{r}
+fig_method_spec_curve_pp <- plot_descriptive_spec_curve(
+  variable = ma_method, 
+  value = "pet-peese", 
+  method = "focus")
+
+fig_method_spec_curve_pp 
+ggsave("figures/fig_method_spec_curve_pp.pdf", 
+       fig_method_spec_curve_pp, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+
+fig_method_spec_curve_waap <- plot_descriptive_spec_curve(
+  variable = ma_method, 
+  value = "waap", 
+  method = "focus")
+
+fig_method_spec_curve_waap 
+
+ggsave("figures/fig_method_spec_curve_waap.pdf", 
+       fig_method_spec_curve_waap, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+
+method_spec_curve_petpeese <- plot_descriptive_spec_curve(
+  variable = ma_method, 
+  value = "pet-peese", 
+  method = "focus")
+
+method_spec_curve_petpeese
+
+ggsave("figures/method_spec_curve_petpeese.pdf", 
+       method_spec_curve_petpeese, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+
+fig_method_spec_curve_3lvl <- plot_descriptive_spec_curve(
+  variable = ma_method, 
+  value = "3-level", 
+  method = "focus")
+
+fig_method_spec_curve_3lvl 
+ggsave("figures/fig_method_spec_curve_3lvl.pdf", 
+       fig_method_spec_curve_3lvl, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina"
+)
+```
+
+## hf_2: Dependency
+
+### Tables
+```{r}
+table_hf_2 <- summarise_factors(data_specifications_nice_names,
+                                wf = Dependency)
+
+data_specifications_nice_names %>% dplyr::count(Method)
+data_specifications_nice_names %>% 
+  filter(Method != "Pet-peese") %>% 
+  summarise_factors(wf = Dependency)
+```
+
+### Raincloud Plots
+```{r}
+fig_dependency_raincloud <- create_rain_plot(data = data_specifications_nice_names,
+                                             method = "all",
+                                             filter_variable =  Dependency,
+                                             group_variable = Dependency,
+                                             value = "Method") 
+
+ggsave("figures/fig_dependency_raincloud.pdf", 
+       fig_dependency_raincloud, 
+       width = 7, 
+       height = 5,
+       dpi = "retina"
+)
+```
+
+<br>
+
+# Additional Analyses
+
+## Confidence Intervals
+
+Have a look at CI overlap with 0 depending on estimators. #TODO
+
+
+## Dependency
+
+```{r}
+data_specifications_nice_names %>% 
+  filter(Method != "Pet-peese") %>% 
+  summarise_factors(wf = Dependency)
+```
+
+## Correction for Publication Bias
+```{r}
+data_specifications_nice_names <- data_specifications_nice_names %>% 
+  mutate_if(is.character, str_to_upper) 
+
+data_specifications_nice_names %>% 
+  mutate(correction = ifelse(Method %in% c("PET-PEESE", "P-UNIFORM", "UWLS", "WAAP"), "yes", "no")) %>% 
+  summarise_factors(wf = correction)
+```
+
+## Table with percentages of meta-analyses over cutoffs
+```{r}
+calculate_percentages <- function(df) {
+  # % of the estimated means were greater than 0
+  mean_over_zero <- df %>% 
+    filter(mean > 0) %>% 
+    nrow()
+  percentage_mean_over_zero <- mean_over_zero/nrow(df) * 100
+  
+  # % of these had 95% CIs that did not include zero
+  ci_over_zero <- df %>% 
+    filter(lb > 0) %>% 
+    nrow()
+  percentage_ci_over_zero <- ci_over_zero/nrow(df) * 100
+  
+  # Clinically relevant effect sizes
+  mean_over_clinically_relevance <- df %>% 
+    filter(mean > .24) %>% 
+    nrow()
+  percentage_mean_over_clinically_relevance <- mean_over_clinically_relevance/nrow(df) * 100
+  
+  ci_over_clinically_relevance <- df %>% 
+    filter(lb > .24) %>% 
+    nrow()
+  
+  percentage_ci_over_clinically_relevance <- ci_over_clinically_relevance/nrow(df) * 100
+  
+  # Return a named vector with the calculated percentages
+  return(c("Percentage Mean Over Zero" = percentage_mean_over_zero,
+           "Percentage CI Over Zero" = percentage_ci_over_zero,
+           "Percentage Mean Over Clinical Relevance" = percentage_mean_over_clinically_relevance,
+           "Percentage CI Over Clinical Relevance" = percentage_ci_over_clinically_relevance))
+}
+
+```
+
+```{r}
+results <- calculate_percentages(data_specifications)
+print(results)
+```
+
+## Methods with different dependency strategies
+```{r}
+data_specifications_modeled <- data_specifications_nice_names %>% 
+  filter(Dependency %in% c("MODELED"))
+
+calculate_percentages(data_specifications_modeled)
+
+data_specifications_aggregate <- data_specifications_nice_names %>% 
+  filter(Dependency %in% c("AGGREGATE"))
+
+calculate_percentages(data_specifications_aggregate)
+```
+
+## Methods correcting for publication bias
+```{r}
+data_specifications_corrected <- data_specifications_nice_names %>% 
+  filter(Method %in% c("PET-PEESE", "P-UNIFORM", "UWLS", "WAAP"))
+
+results_corrected <- calculate_percentages(data_specifications_corrected)
+print(results_corrected)
+```
+
+## Methods not correcting for publication bias
+```{r}
+data_specifications_uncorrected <- data_specifications_nice_names %>% 
+  filter(!Method %in% c("PET-PEESE", "P-UNIFORM", "UWLS", "WAAP"))
+
+results_uncorrected <- calculate_percentages(data_specifications_uncorrected)
+print(results_uncorrected)
+```
+
+## Vibration of effects 
+
+```{r}
+specifications_k2 %>% group_by(wf_1) %>% dplyr::summarise(mean = mean(mean)) # this would be interesting
+```
+
+
+```{r}
+voe.2  <- plot_VoE(specifications_k2, "2")
+voe.5  <- plot_VoE(specifications_k5, "5")
+voe.10 <- plot_VoE(specifications_k10, "10")
+voe.25 <- plot_VoE(specifications_k25, "25")
+voe.50 <- plot_VoE(specifications_k50, "50")
+
+voe_sensitivity <-  plot_grid(voe.2,
+                              voe.5,
+                              #voe.10,
+                              voe.25,
+                              voe.50,
+                              ncol = 2,
+                              align = "h") 
+
+ggsave("figures/voe_sensitivity.pdf", 
+       voe_sensitivity, 
+       width = 12, 
+       height = 12,
+       dpi = "retina")
+
+ggsave("figures/voe2.pdf", 
+       voe.2, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina")
+
+ggsave("figures/voe5.pdf", 
+       voe.5, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina")
+
+ggsave("figures/voe10.pdf", 
+       voe.10, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina")
+
+ggsave("figures/voe25.pdf", 
+       voe.25, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina")
+
+ggsave("figures/voe50.pdf", 
+       voe.50, 
+       width = 14, 
+       height = 7.5,
+       dpi = "retina")
+```
+
+
+<br>
+
+# Save Rdata
+```{r}
+save(list = ls(), file = "data/tidy/digDep_results.rda")
+```
+

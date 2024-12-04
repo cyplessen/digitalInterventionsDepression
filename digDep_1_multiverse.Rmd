@@ -1,0 +1,862 @@
+---
+title: "digitalMultiverse: Depression"
+subtitle: "1. Analyses"
+author: "Constantin Yves Plessen & Olga-Maria Panagiotopoulou"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    highlight: pygment
+    theme: cerulean
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)    # read excel
+library(grid)      # plots
+library(cowplot)    # plot_grid()
+library(gridExtra) # arrange plots
+library(janitor)   # data cleaning
+library(tidyverse) # data wrangling
+library(puniform)
+library(metaviz)
+library(metaumbrella)
+library(zoo)
+library(metafor)   # conduct meta-analysis
+
+# parallelization
+library(doParallel)
+library(foreach)
+set.seed(1234)
+
+# Delete before code is released.
+library(todor) # helper package to manage project
+
+
+# load helper functions
+source("functions/helper-functions.R")
+```
+
+# Overview
+
+## Input
+- `data/tidy/xxx`
+
+<br>
+
+## Output
+
+- `data/tidy/specifications_parallel.csv`
+
+
+# DigDep Multiverse: Preperation
+
+## Cleaning
+```{r}
+multiverse_data.import <- read_excel("data/raw/Multiverse_Finalversion_Dep_OPdouble-rated_31.10.xlsx") 
+
+multiverse_data.import %>% select(study,
+                                  mean_arm1, mean_arm2,
+                                  sd_arm1, sd_arm2,
+                                  n_arm1, n_arm2) %>% 
+  mutate(dist_mean = mean_arm1 - mean_arm2,
+         dist_sd = sd_arm1 - as.numeric(sd_arm2),
+         dist_n = n_arm1 - n_arm2)
+```
+
+
+
+### Selecting Post Intervention Effect Sizes 
+```{r}
+multiverse_data.post <- multiverse_data.import %>% 
+  filter(time == "post")
+```
+
+
+## Inspect Which Factors: Must Include
+
+### Which Factor 1: `tech`/`format_spec`
+
+```{r}
+multiverse_data.import %>%  dplyr::count(format_spec)
+
+multiverse_data.wf_1 <- multiverse_data.import %>% 
+  mutate(wf_1 = case_match(
+    format_spec,
+    c(1) ~ "mobile",
+    c(2) ~ "website",
+    .default = "both"
+  )) 
+
+wf_tech <- c("mobile", 
+             "website",
+             "both")
+
+multiverse_data.wf_1 %>% dplyr::count(wf_1)
+```
+
+### Which Factor 2: `format` or `support`
+```{r}
+multiverse_data.wf_1 %>%  dplyr::count(format)
+```
+
+#### `support`
+
+Create category from support instead of using format.
+
+```{r}
+multiverse_data.wf_1 %>%  group_by(study) %>% slice(1) %>% ungroup() %>%  dplyr::count(support)
+```
+
+##### Category 1 - minimal to no support
+
+0.0 + 1.0
+
+##### Category 2 - automated encouragement: 
+1 or 2 categories from:
+2.0	10			
+3.0	5			
+3.5	1			
+
+##### Category 3 - human encouragement
+4.0	12
+
+##### Category 4 - guided
+category 4: 5.0
+
+```{r}
+multiverse_data.wf_2 <- multiverse_data.wf_1 %>% 
+  mutate(wf_2 = case_match(
+    support,
+    c(0,1) ~ "minimal to no support",
+    c(2, 3) ~ "automated encouragement",
+    c(4) ~ "human encouragement",
+    c(5) ~ "guided",
+    .default = NA
+  )) 
+
+multiverse_data.wf_2 %>% dplyr::count(wf_2)
+```
+
+
+
+### Which Factor 3: `target_group`
+```{r}
+multiverse_data.wf_2 %>%  dplyr::count(target_group)
+```
+
+I suggest a cutoff, maybe at least 10 primary studies? This results in these 5 categories
+- adul
+- young = "adol", "stud", "yadul"
+- med 
+- ppd
+- other = "old", "oth"
+
+```{r}
+multiverse_data.wf_3 <- multiverse_data.wf_2 %>% 
+  mutate(wf_3 = case_match(
+    target_group,
+    c("adol", "stud", "yadul") ~ "young",
+    c("old") ~ "adul", 
+    c("oth") ~ "other group",
+    .default = target_group
+  )) 
+
+multiverse_data.wf_3 %>% dplyr::count(wf_3)
+```
+
+
+
+### Which Factor 4: `condition_arm1`
+```{r}
+multiverse_data.wf_3 %>%  dplyr::count(condition_arm1)
+```
+
+
+```{r}
+multiverse_data.wf_4 <- multiverse_data.wf_3 %>% 
+  mutate(
+    wf_4 = case_match(
+      condition_arm1,
+      c("cbt", "bat", "3rd") ~ "cbt-based",
+      .default = "not-cbt-based"
+    )
+  ) 
+
+multiverse_data.wf_4 %>% dplyr::count(wf_4)
+```
+
+
+
+### Which Factor 5: `condition_arm2`
+```{r}
+multiverse_data.wf_4 %>%  dplyr::count(condition_arm2)
+
+multiverse_data.wf_4 %>% filter(is.na(condition_arm2))
+```
+- WlC, Cau, other
+
+New category: WL "Premium" if > 10 studies
+- wl + psychoeducation, some literature etc.
+- Not enough information or studies with "premium" wait list design
+- Needs to be extracted
+
+```{r}
+multiverse_data.wf_4 %>% filter(condition_arm2 == "wl") %>% dplyr::count(descr_arm2)
+
+multiverse_data.wf_5 <- multiverse_data.wf_4 %>% 
+  mutate(wf_5 = ifelse(study == "deGraaf, 2009" & multi_arm2 == "cau", "cau", condition_arm2))
+
+multiverse_data.wf_5 %>% dplyr::count(wf_5)
+```
+
+
+```{r}
+multiverse_data.wf_4 %>% dplyr::count(condition_arm2)
+```
+
+### Which Factor 6: `diagnosis`
+```{r}
+multiverse_data.wf_5 %>%  dplyr::count(diagnosis)
+```
+
+- 1. mdd,
+- 2. cut
+- 3. other
+
+```{r}
+multiverse_data.wf_6 <- multiverse_data.wf_5 %>% 
+  mutate(wf_6 = case_match(
+    diagnosis,
+    c("cut", "sub") ~ "cut",
+    .default = diagnosis
+  )) 
+
+multiverse_data.wf_6 %>% dplyr::count(wf_6)
+```
+
+### Which Factor 7: `rob`
+```{r}
+multiverse_data.wf_6 %>%  dplyr::count(rob)
+```
+
+
+```{r}
+multiverse_data.wf_6 %>%  dplyr::count(`Totalscore_rob2`)
+```
+
+```{r}
+multiverse_data.wf_7 <- multiverse_data.wf_6 %>% 
+  mutate(wf_7 = str_to_lower(`Totalscore_rob2`)
+  )
+
+multiverse_data.wf_7 %>% dplyr::count(wf_7)
+```
+
+<br>
+
+### Which Factor 8: `time`
+```{r}
+multiverse_data.import %>%  dplyr::count(time)
+multiverse_data.post %>%  dplyr::count(time)
+multiverse_data.import <- multiverse_data.import %>% 
+  mutate(time = case_match(
+    `time`,
+    "FU1" ~ "fu1",
+    .default = time
+  ))
+
+multiverse_data.import %>%  dplyr::count(time)
+```
+
+##### After 6 months (use time_weeks)
+- only after 24 weeks
+
+```{r}
+which_factor_time <- c("post",
+                       "after24weeks")
+```
+
+```{r}
+multiverse_data.import %>% dplyr::count(time_weeks)
+multiverse_data.import %>% dplyr::count(time)
+
+multiverse_data.wf_7_time_weeks_num <- multiverse_data.wf_7 %>% # multiverse_data.wf_7
+  mutate(time_weeks_num  = ifelse(
+    time_weeks == "5 to 10", 
+    "7.5",
+    time_weeks),
+    time_weeks_num = as.numeric(time_weeks_num))
+
+multiverse_data.wf_7_time_weeks_num %>% 
+  drop_na(time_weeks_num) %>% 
+  filter(time == "post") %>% 
+  ggplot() +
+  geom_bar(aes(x = time_weeks_num))
+
+multiverse_data.wf_8 <- multiverse_data.wf_7_time_weeks_num %>%
+  mutate(time = case_match(
+    `time`,
+    "FU1" ~ "fu1",
+    .default = time
+  ),
+  wf_8 = case_when(
+    time %in% c("fu1", "fu2", "fu3") & time_weeks_num >= 24  ~ "follow-up",
+    time %in% c("fu1", "fu2", "fu3") & time_weeks_num < 24  ~ "short follow-up",
+    time == "post" ~ "post", 
+    .default = time
+  )
+  ) 
+```
+
+We can delete fu3 as we have fu2 measures for those studies closer to 24 weeks.
+```{r}
+multiverse_data.wf_8 %>% 
+  filter( time == "fu3") 
+
+multiverse_data.wf_8 <- multiverse_data.wf_8 %>% 
+  filter( time != "fu3") 
+```
+
+We have many short follow ups but have to delete those, as they are below 6 months/24 weeks.
+
+We could introduce a sensitivity analysis but might be overkill.
+```{r}
+multiverse_data.wf_8 %>% 
+  filter(wf_8 == "short follow-up") %>% dplyr::count(time_weeks_num) %>% arrange(n)
+
+multiverse_data.wf_8 <- multiverse_data.wf_8 %>% 
+  filter(wf_8 != "short follow-up") 
+```
+
+
+
+
+## Calculate Effect Sizes
+
+### Add other statistic
+
+```{r}
+multiverse_data.import %>% 
+  filter(outcome_type == "other stat") %>% 
+  relocate(precalc_g, precalc_g_se, study, other_statistic, rand_arm1, rand_arm2, time, time_weeks) %>% 
+  mutate(
+    n = rand_arm1 + rand_arm2,
+    precalc_g = case_match(
+      other_statistic,
+      "F(2.81, 5602.08)= 41.7; P < .001), d=0.37 CI: 0.29 - 0.44" ~ esc::hedges_g(0.37, n),
+      "Between group PHQ-9, d = 0.23, CI : 0.15-0.31" ~ esc::hedges_g(0.23, n),
+      "Cohen's d= 0.15, CI: 0.07-0.23" ~ esc::hedges_g(0.15, n),
+      .default = precalc_g
+    ))
+```
+
+
+```{r}
+#Alavi, 2016
+alavi_post <- esc::esc_f(f = 39.54,      # F value of the one-way anova
+                         grp1n = 47,   # sample size of group 1 
+                         grp2n = 46,   # sample size of group 2
+                         es.type = "g") # convert to Hedges' g; use "d" for SMD
+
+alavi_fu1 <- esc::esc_f(f = 44.67,      # F value of the one-way anova
+                        grp1n = 47,   # sample size of group 1 
+                        grp2n = 46,   # sample size of group 2
+                        es.type = "g") # convert to Hedges' g; use "d" for SMD
+
+multiverse_data.es <- multiverse_data.wf_8 %>% 
+  mutate(precalc_g = case_when(
+    study == "Alavi, 2016" & time == "post" ~ alavi_post$es *-1, # we need negative = better treatmetn direction here first!
+    study == "Alavi, 2016" & time == "fu1" ~ alavi_fu1$es *-1,   # we will reverse direction into postive = better treatment in next step
+    TRUE ~ precalc_g *-1
+  ),
+  precalc_g_se = case_when(
+    study == "Alavi, 2016" & time == "post" ~ alavi_post$se,
+    study == "Alavi, 2016" & time == "fu1" ~ alavi_fu1$se,
+    TRUE ~ precalc_g_se
+  )
+  )
+```
+
+
+
+```{r}
+multiverse_data <- multiverse_data.es %>% 
+  metapsyTools::checkDataFormat() %>% 
+  mutate(mean_change_arm1 = as.numeric(mean_change_arm1)) %>% 
+  metapsyTools::calculateEffectSizes() %>% 
+  mutate(
+    yi = .g *-1, # convention that larger es means better treatment outcomes
+    sei = .g_se,
+    vi = sei^2,
+    es_id = row_number(),
+    sample_size = n_arm1 + n_arm2) %>% 
+  drop_na(yi) %>% 
+  as.data.frame(.)  %>% 
+  metapsyTools::filterPriorityRule(
+    outcome_type =
+      c("msd",
+        "remission",
+        "remission (cut-off)",
+        "response (50%)",
+        "dich",
+        "other dich (sign. change)",
+        "change",
+        "other stat"),
+    .study.indicator = "study")   %>% 
+  select(study, 
+         es_id,
+         yi, 
+         .g,
+         precalc_g,
+         vi,
+         sei,
+         wf_1,
+         wf_2,
+         wf_3,
+         wf_4,
+         wf_5,
+         wf_6,
+         wf_7,
+         wf_8,
+         sample_size,
+         everything()) %>% 
+  mutate(across(wf_1:wf_8, ~replace_na(., "NA")))
+
+multiverse_data %>% write.csv("data/tidy/digDep_multiverse_data.csv")
+```
+
+
+```{r}
+multiverse_data %>% filter(yi <0)
+```
+
+
+
+# Set up multiverse meta-analysis
+
+## Create Which factors
+```{r}
+wf_1 <- c(unique(multiverse_data$wf_1), "total_wf_1")
+wf_2 <- c(unique(multiverse_data$wf_2), "total_wf_2")
+wf_3 <- c(unique(multiverse_data$wf_3), "total_wf_3")
+wf_4 <- c(unique(multiverse_data$wf_4), "total_wf_4")
+wf_5 <- c(unique(multiverse_data$wf_5), "total_wf_5")
+wf_6 <- c(unique(multiverse_data$wf_6), "total_wf_6")
+wf_7 <- c("exclude_worst", "include_best", "total_wf_7")
+wf_8 <- c(unique(multiverse_data$wf_8), "total_wf_8")
+```
+
+### Create How Factors
+```{r}
+ma_method    <- c("reml", "fe",               # aggregate | ignore
+                  "p-uniform", "pet-peese", "uwls", "waap",  # aggregate only
+                  "3-level", "rve")           # modeled
+
+dependency <- c("ignore", "aggregate", "modeled")
+```
+
+### Construct all specifications
+
+```{r}
+specifications_grid <- expand.grid(
+  wf_1 = wf_1, 
+  wf_2 = wf_2, 
+  wf_3 = wf_3, 
+  wf_4 = wf_4, 
+  wf_5 = wf_5, 
+  wf_6 = wf_6, 
+  wf_7 = wf_7, 
+  wf_8 = wf_8, 
+  
+  dependency = dependency,
+  ma_method = ma_method) 
+
+number_specs <- nrow(specifications_grid)
+number_specs
+```
+
+## Prune how factor paths that are impossible
+I.e. modeling 3-level structure with pet-peese
+```{r}
+specifications_grid <- specifications_grid %>% 
+  filter((dependency == "modeled" & # Only those modeled dependencies should be calculated
+            ma_method %in% c("3-level","rve")) | 
+           
+           (dependency == "aggregate" & # Only those averaged dependencies should be calculated
+              ma_method %in% c("reml", "fe" , "p-uniform","pet-peese", "uwls", "waap")) | 
+           
+           (dependency == "ignore" & # Only those ignored dependencies should be calculated
+              ma_method %in% c("reml", "fe"))) 
+
+nrow(specifications_grid)
+
+specifications <- data.frame(specifications_grid)
+```
+
+
+
+## Parallel_multiverse
+```{r}
+parallel_multiverse <- function(i) {  
+  out <- list()
+  dat <- as.data.frame(multiverse_data)
+  
+  # Determine specification subsets by using "Which" factors 
+  
+  # wf_1 "website"    "mobile"     "both"       "total_wf_1"
+  if(specifications$wf_1[i] == "website") {
+    dat <- dat[dat$wf_1 == "website", ] 
+  } else {
+    if(specifications$wf_1[i] == "mobile") {
+      dat <- dat[dat$wf_1 == "mobile", ] 
+    } else {
+      if(specifications$wf_1[i] == "both") {
+        dat <- dat[dat$wf_1 == "both", ] 
+      }
+    }
+  } 
+  
+  # wf_2  "minimal to no support",   "guided", "automated encouragement", "human encouragement" 
+  if(specifications$wf_2[i] == "guided") {
+    dat <- dat[dat$wf_2 == "guided", ] 
+  } else {
+    if(specifications$wf_2[i] == "minimal to no support") {
+      dat <- dat[dat$wf_2 == "minimal to no support", ] 
+    } else {
+      if(specifications$wf_2[i] == "automated encouragement") {
+        dat <- dat[dat$wf_2 == "automated encouragement", ] 
+      } else {
+        if(specifications$wf_2[i] == "human encouragement") {
+          dat <- dat[dat$wf_2 == "human encouragement", ] 
+        }
+      }
+    }
+  }
+  
+  # wf_3 "adul"        "med"         "other group" "ppd"         "young"       "total_wf_3" 
+  if(specifications$wf_3[i] == "adul") {
+    dat <- dat[dat$wf_3 == "adul", ] 
+  } else {
+    if(specifications$wf_3[i] == "med") {
+      dat <- dat[dat$wf_3 == "med", ] 
+    } else {
+      if(specifications$wf_3[i] == "other group") {
+        dat <- dat[dat$wf_3 == "other group", ] 
+      } else {
+        if(specifications$wf_3[i] == "ppd") {
+          dat <- dat[dat$wf_3 == "ppd", ] 
+        } else {
+          if(specifications$wf_3[i] == "young") {
+            dat <- dat[dat$wf_3 == "young", ] 
+          }
+        }
+      }
+    }
+  }
+  
+  # wf_4 "not-cbt-based" "cbt-based"     "total_wf_4"  
+  if(specifications$wf_4[i] == "not-cbt-based") {
+    dat <- dat[dat$wf_4 == "not-cbt-based", ] 
+  } else {
+    if(specifications$wf_4[i] == "cbt-based") {
+      dat <- dat[dat$wf_4 == "cbt-based", ] 
+    }
+  } 
+  
+  # wf_5 
+  if(specifications$wf_5[i] == "wl") {
+    dat <- dat[dat$wf_5 == "wl", ] 
+  } else {
+    if(specifications$wf_5[i] == "cau") {
+      dat <- dat[dat$wf_5 == "cau", ] 
+    } else {
+      if(specifications$wf_5[i] == "other ctr") {
+        dat <- dat[dat$wf_5 == "other ctr", ] 
+      }
+    }
+  }
+  
+  # wf_6 "cut"        "other"      "mdd"    
+  if(specifications$wf_6[i] == "cut") {
+    dat <- dat[dat$wf_6 == "cut", ] 
+  } else {
+    if(specifications$wf_6[i] == "mood") {
+      dat <- dat[dat$wf_6 == "mood", ] 
+    } else {
+      if(specifications$wf_6[i] == "mdd") { 
+        dat <- dat[dat$wf_6 == "mdd", ] 
+      }
+    }
+  }
+  
+  # wf_7
+  if(specifications$wf_7[i] == "include_best") {
+    dat <- dat[dat$wf_7 == "low risk", ] 
+  } else {
+    if(specifications$wf_7[i] == "exclude_worst") {
+      dat <- dat[dat$wf_7 == "low risk" | dat$wf_7 == "some concerns", ] 
+    }
+  }
+  
+  # wf_8
+  if(specifications$wf_8[i] == "post") {
+    dat <- dat[dat$wf_8 == "post", ] 
+  } else {
+    if(specifications$wf_8[i] == "follow-up") {
+      dat <- dat[dat$wf_8 == "follow-up", ] 
+    }
+  }
+  
+  # Save which study/sample IDs were selected by the "Which" factors for a given specification.
+  dat <- drop_na(dat, any_of(c("yi", "vi")))
+  set <- paste(dat$es_id, collapse = ",")
+  
+  # only compute meta-analytic summary effects for specification subsets with at least 10 studies/samples.
+  if(length(unique(dat$study)) < 2) { #CHANGED 
+    out <- NULL
+    
+    #######################################################################
+    ######################## HOW FACTORS ##################################
+    ####################################################################### 
+  } else {
+    ######################## IGNORING DEPENDENCY ##############################
+    if(specifications$dependency[i] == "ignore") {
+      
+      if(specifications$ma_method[i] == "fe") {
+        mod <- metafor::rma(yi = dat$yi, vi = dat$vi, method = "FE") 
+      } else {
+        if(specifications$ma_method[i] == "reml") {
+          mod <- rma(yi = dat$yi, vi = dat$vi, method = "REML", control = list(stepadj=0.5, maxiter = 2000))  
+        }
+      }
+      out <-  data.frame(specifications[i, ], 
+                         b = mod$b[[1]],
+                         ci.lb = mod$ci.lb[[1]],
+                         ci.ub = mod$ci.ub[[1]],
+                         pval = mod$pval[[1]],
+                         k = nrow(dat),
+                         set)
+      
+    } else {
+      
+      ######################## AGGREGATE DEPENDENCY ################################
+      if(specifications$dependency[i] == "aggregate") {
+        
+        # Aggregate data
+        dat <- dat %>% 
+          escalc(yi=yi, vi=vi, data=.)
+        
+        dat <- as.data.frame(aggregate(dat, 
+                                       cluster = study,
+                                       struct="CS" , #compound symmetric structure as nested are not indpendent
+                                       rho = 0.5))
+        
+        
+        if(specifications$ma_method[i] == "fe") {
+          mod <- rma(yi = dat$yi, vi = dat$vi, method = "FE") 
+        } else {
+          if(specifications$ma_method[i] == "reml") {
+            mod <- rma(yi = dat$yi, vi = dat$vi, method = "REML", 
+                       control = list(stepadj=0.5, maxiter = 2000))  
+          } else {
+            if(specifications$ma_method[i] == "uwls" & length(unique(dat$study)) >= 2) {
+              mod <- calculate_uwls(dat)
+              
+            } else {
+              if(specifications$ma_method[i] == "waap" & length(unique(dat$study)) >= 2) {
+                mod <- calculate_waap(dat)
+              } else {
+                if(specifications$ma_method[i] %in% c("waap", "uwls") & length(unique(dat$study)) < 2) { 
+                  mod <- list() 
+                  mod$b[[1]]     <- NA
+                  mod$ci.lb[[1]] <- NA
+                  mod$ci.ub[[1]] <- NA
+                  mod$pval[[1]]  <- NA
+                } else {
+                  if(specifications$ma_method[i] == "pet-peese" & length(unique(dat$study)) >= 10) { # needs more than 10 unique studies
+                    mod <- PET.PEESE(dat)
+                  } else {
+                    if(specifications$ma_method[i] == "pet-peese" & length(unique(dat$study)) < 10) { 
+                      mod <- list() 
+                      mod$b[[1]]     <- NA
+                      mod$ci.lb[[1]] <- NA
+                      mod$ci.ub[[1]] <- NA
+                      mod$pval[[1]]  <- NA
+                    } else {
+                      if(specifications$ma_method[i] == "p-uniform") {
+                        
+                        mod <- tryCatch({
+                          mod.puni <- puni_star(yi = dat$yi, 
+                                                vi = dat$vi, 
+                                                side = "right")
+                          
+                          list(b = mod.puni$est, 
+                               pval = mod.puni$pval.0, 
+                               ci.lb = mod.puni$ci.lb , 
+                               ci.ub = mod.puni$ci.ub )
+                        }, error = function(e) {
+                          list(b = NA, 
+                               pval = NA, 
+                               ci.lb = NA, 
+                               ci.ub = NA)
+                        })
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        out <-  data.frame(specifications[i, ], 
+                           b = mod$b[[1]],
+                           ci.lb = mod$ci.lb[[1]],
+                           ci.ub = mod$ci.ub[[1]],
+                           pval = mod$pval[[1]],
+                           k = nrow(dat),
+                           set)
+        
+      } else {
+        
+        #################### MODELING DEPENDENCY #################################  
+        
+        if(specifications$dependency[i] == "modeled" & sum(duplicated(dat$study)) > 1) { 
+          
+          mod <- tryCatch({
+            # Your original code for rma.mv
+            mod_modeled <- rma.mv(data = dat, 
+                                  yi = yi, 
+                                  V = vi, 
+                                  method = "REML", 
+                                  control = list("nlminb", rel.tol = 1e-8),
+                                  random = list(~1 | es_id,
+                                                ~1 | study), 
+                                  sparse = TRUE)
+            
+            # Subsequent code
+            if(specifications$ma_method[i] == "3-level") {
+              mod <- mod_modeled
+            } else {
+              if(specifications$ma_method[i] == "rve") {
+                mod <- robust(mod_modeled, 
+                              cluster = dat$study, 
+                              clubSandwich = TRUE)
+              }
+            }
+            mod <- list(b = mod$b, 
+                        pval = mod$pval, 
+                        ci.lb = mod$ci.lb, 
+                        ci.ub = mod$ci.ub)
+            
+          }, error = function(e) {
+            # Handling the error
+            # message("Error encountered: ", e$message)
+            mod <- list(b = NA, 
+                        pval = NA, 
+                        ci.lb = NA, 
+                        ci.ub = NA) # Include other mod attributes if needed
+          })
+          
+          out <-  data.frame(specifications[i, ], 
+                             b = mod$b[[1]],
+                             ci.lb = mod$ci.lb[[1]],
+                             ci.ub = mod$ci.ub[[1]],
+                             pval = mod$pval[[1]],
+                             k = nrow(dat),
+                             set)
+        } else {
+          if(specifications$dependency[i] == "modeled" & (sum(duplicated(dat$study)) <= 1 | length(unique(dat$study) == 1))) { 
+            
+            # IF number of clusters is smaller than number of data points, write NA
+            mod <- list() 
+            
+            if(specifications$ma_method[i] == "3-level") {
+              mod$b[[1]]     <- NA
+              mod$ci.lb[[1]] <- NA
+              mod$ci.ub[[1]] <- NA
+              mod$pval[[1]]  <- NA
+            } else {
+              if(specifications$ma_method[i] == "rve") {
+                mod$b[[1]]      <- NA
+                mod$ci.lb[[1]]  <- NA
+                mod$ci.ub[[1]]  <- NA
+                mod$pval[[1]]   <- NA
+              }
+            }
+          }
+          
+          out <-  data.frame(specifications[i, ], 
+                             b = mod$b[[1]],
+                             ci.lb = mod$ci.lb[[1]],
+                             ci.ub = mod$ci.ub[[1]],
+                             pval = mod$pval[[1]],
+                             k = nrow(dat),
+                             set)
+        }
+      }
+    }
+  }
+}
+```
+
+# Run parallel computations
+
+```{r}
+n.cores <- parallel::detectCores() -1
+my.cluster <- parallel::makeCluster(
+  n.cores,
+  type = "PSOCK"
+)
+print(my.cluster)
+
+registerDoParallel(cl = my.cluster)
+getDoParRegistered()
+getDoParWorkers()
+
+## Assign empty list for storing results
+res_spec_curve <- list()
+
+## Iterate
+tictoc::tic() # track time
+res_spec_curve <- foreach(i=1:nrow(specifications), 
+                          .packages = c("tidyverse", "metafor", "puniform")) %dopar% {
+                            parallel_multiverse(i)
+                          }
+stopCluster(my.cluster)
+tictoc::toc()
+```
+
+```{r}
+## Bind results 
+specifications_parallel <- do.call(rbind, res_spec_curve)
+```
+
+```{r}
+specifications_parallel
+specifications_parallel %>% dplyr::count(wf_7) 
+```
+
+## Cleaning specifications
+
+```{r}
+specifications_parallel %>% dplyr::count(ma_method)
+```
+
+```{r}
+colnames(specifications_parallel) <-
+  c(colnames(specifications),"mean","lb" ,"ub","p" ,"k", "set")
+
+#Indicator if all studies are included in the set
+specifications_parallel$full_set <- as.numeric(specifications_parallel$set == paste(1:nrow(multiverse_data), collapse =",", sep = "")) 
+
+specifications_parallel <- specifications_parallel%>% drop_na(mean)
+
+write.csv2(file = "data/tidy/specifications_parallel.csv", 
+           specifications_parallel)
+```
